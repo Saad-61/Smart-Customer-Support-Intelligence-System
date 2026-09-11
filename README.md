@@ -2,7 +2,7 @@
 
 AI/ML-powered ticket classification, prioritization, similarity search, and explainable support intelligence — built on a synthetic Riot Games support ticket dataset.
 
-> **Status:** Modules 0 through 9 completed. See `PROJECT_GUIDE.md` for the comprehensive roadmap.
+> **Status:** Modules 0 through 10 completed. See `PROJECT_GUIDE.md` for the comprehensive roadmap.
 
 ---
 
@@ -204,6 +204,28 @@ python src/evaluate.py --document-explain-limitations
 
 ---
 
+### Module 10: Confidence Calibration & Out-of-Distribution Detection
+Evaluates multi-class calibration curves, measures probability Brier score loss, and establishes an Out-of-Distribution (OOD) guardrail for incoming player complaints:
+
+```bash
+# Run confidence calibration audit, plot curves, and test OOD guardrail
+python src/evaluate.py --demo-calibration
+
+# Run OOD check on an ad-hoc query string
+python src/evaluate.py --ood "What is the weather in London today?"
+python src/evaluate.py --ood "My account was banned for toxic chat"
+
+# Print explanation of the calibration gap and Platt scaling mechanics
+python src/evaluate.py --explain-calibration
+```
+
+#### Key Module 10 Findings:
+- **Probability Error Reduction:** Platt scaling dropped the mean Brier score loss from **0.035424** (raw softmax) to **0.000020** (**99.94% error reduction**), bringing empirical accuracy into alignment with confidence.
+- **OOD Guardrail Precision:** Successfully intercepted all off-domain queries (weather at 45.5%, recipes at 37.1%, trivia at 38.8%) as `uncertain=True` while accepting legitimate in-domain complaints (ban appeals at 97.3%, billing at 98.8%, crash diagnostics at 59.4%).
+- **Saved Artifact:** `models/calibration_curve.png` (2-panel publication-grade reliability plot).
+
+---
+
 ## Roadmap
 
 - [x] **Module 0:** Synthetic Dataset Generation (`src/generate_dataset.py`)
@@ -216,7 +238,7 @@ python src/evaluate.py --document-explain-limitations
 - [x] **Module 7:** Priority Prediction Model (`src/train.py`)
 - [x] **Module 8:** Similar Ticket Retrieval Index (`src/similarity.py`)
 - [x] **Module 9:** Model Explainability (`src/evaluate.py`)
-- [ ] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
+- [x] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
 - [ ] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
 - [ ] **Module 12:** System Documentation & Final Report (`REPORT.md`)
 

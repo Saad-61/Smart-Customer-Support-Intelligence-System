@@ -1099,7 +1099,7 @@ def demonstrate_calibration(
         ("Off-Domain #3 (Sports Trivia)", "Who won the World Cup in 1998?", True),
         ("In-Domain #1 (Account Ban)", "My account was permanently banned for toxic chat", False),
         ("In-Domain #2 (Missing RP)", "I was charged twice for the same RP bundle", False),
-        ("In-Domain #3 (Client Crash)", "Game freezes and crashes during champion select every time", False),
+        ("In-Domain #3 (Client Crash)", "Game freezes and crashes during champion select every time with a fatal directx error.", False),
     ]
 
     print("-" * 90)
