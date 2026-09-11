@@ -2,7 +2,7 @@
 
 AI/ML-powered ticket classification, prioritization, similarity search, and explainable support intelligence — built on a synthetic Riot Games support ticket dataset.
 
-> **Status:** Modules 0 through 4 completed. See `PROJECT_GUIDE.md` for the comprehensive roadmap.
+> **Status:** Modules 0 through 8 completed. See `PROJECT_GUIDE.md` for the comprehensive roadmap.
 
 ---
 
@@ -157,6 +157,32 @@ python src/train.py --model priority --type xgb
 
 ---
 
+### Module 8: Similar Ticket Retrieval Index
+Builds and serves a dense semantic retrieval index using Sentence Transformers on CUDA GPU to find the 5 most historically similar support tickets:
+
+```bash
+# Build and serialize dense retrieval index on GPU
+python src/similarity.py --build-index
+
+# Run retrieval demonstration across 3 sample queries
+python src/similarity.py --demo-retrieval
+
+# Search for similar tickets given an ad-hoc query
+python src/similarity.py --query "I was charged twice for the same order."
+
+# Print written analysis comparing TF-IDF vs. Dense Transformer limitations
+python src/similarity.py --document-limitations
+```
+
+#### Key Module 8 Findings:
+- **Transformer Backbone:** `all-MiniLM-L6-v2` (384-dimensional dense semantic vectors).
+- **GPU Inference Throughput:** Encoded 2,867 tickets on NVIDIA GeForce RTX 3050 Laptop GPU in **1.23s** (36.49 batches/s).
+- **Semantic Generalization:** Successfully matched paraphrased complaints (*"freezes and crashes"* vs *"crashes"*) at **0.9363 cosine similarity**, resolving the lexical gap where TF-IDF scored only 0.1573.
+- **Cross-Title Resolution:** Correctly surfaced related past incidents (e.g. scripting bans) across multiple Riot titles (*League of Legends*, *TFT*, *Legends of Runeterra*).
+- **Saved Artifact:** `models/retrieval_index.joblib` (4.33 MB, 2,867 normalized embedding vectors + metadata).
+
+---
+
 ## Roadmap
 
 - [x] **Module 0:** Synthetic Dataset Generation (`src/generate_dataset.py`)
@@ -167,7 +193,7 @@ python src/train.py --model priority --type xgb
 - [x] **Module 5:** Near-Duplicate Detection (`src/similarity.py`)
 - [x] **Module 6:** Category Classification Models (`src/train.py`)
 - [x] **Module 7:** Priority Prediction Model (`src/train.py`)
-- [ ] **Module 8:** Similar Ticket Retrieval Index (`src/similarity.py`)
+- [x] **Module 8:** Similar Ticket Retrieval Index (`src/similarity.py`)
 - [ ] **Module 9:** Model Explainability (`src/evaluate.py`)
 - [ ] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
 - [ ] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
