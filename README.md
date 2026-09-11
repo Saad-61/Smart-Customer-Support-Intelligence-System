@@ -134,6 +134,27 @@ python src/train.py --model category --type svm
   - `models/category_tfidf.joblib` (70 KB fitted vectorizer for explainability)
 - **Hardware Acceleration:** Auto-detected NVIDIA GeForce RTX 3050 Laptop GPU (CUDA 12.1 active).
 
+### Module 7: Priority Prediction Models
+Trains GPU-accelerated gradient boosting models to classify ticket urgency (`HIGH`, `MEDIUM`, `LOW`) using feature reduction and multi-modal feature fusion:
+
+```bash
+# Benchmark both Model A (XGBoost GPU) & Model B (Random Forest CPU)
+python src/train.py --model priority
+
+# Train specifically with GPU-accelerated XGBoost
+python src/train.py --model priority --type xgb
+```
+
+#### Key Module 7 Findings:
+| Model Architecture | Accuracy | Macro F1 | Weighted F1 | Training Time | Compute Engine | Status |
+| :--- | :---: | :---: | :---: | :---: | :--- | :---: |
+| **Model A: XGBoost (CUDA Hist)** | **37.59%** | **35.55%** | **38.52%** | **2.184s** | **GPU (NVIDIA RTX 3050)** | **Selected Production Model** |
+| **Model B: Random Forest (CPU)** | 35.00% | 32.09% | 35.81% | 0.422s | CPU Multi-Core | Baseline |
+
+- **Feature Fusion Pipeline:** 50 latent semantic text components (`TruncatedSVD` on TF-IDF) fused with one-hot encoded product titles and operational metadata (59 dense features).
+- **Leakage Safeguard:** Post-outcome variables (`resolution_time`, `resolved`) strictly excluded.
+- **Saved Artifact:** `models/priority_model.joblib` (2.68 MB end-to-end inference pipeline).
+
 ---
 
 ## Roadmap
@@ -145,11 +166,12 @@ python src/train.py --model category --type svm
 - [x] **Module 4:** Leakage Analysis & Customer-Aware Evaluation (`src/evaluate.py`)
 - [x] **Module 5:** Near-Duplicate Detection (`src/similarity.py`)
 - [x] **Module 6:** Category Classification Models (`src/train.py`)
-- [ ] **Module 7:** Priority Prediction Model (`src/train.py`)
+- [x] **Module 7:** Priority Prediction Model (`src/train.py`)
 - [ ] **Module 8:** Similar Ticket Retrieval Index (`src/similarity.py`)
 - [ ] **Module 9:** Model Explainability (`src/evaluate.py`)
 - [ ] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
 - [ ] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
 - [ ] **Module 12:** System Documentation & Final Report (`REPORT.md`)
+
 
 
