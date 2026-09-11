@@ -90,6 +90,28 @@ python src/evaluate.py --compare-splits --target category
    - Shuffles unique `customer_id`s so the test cohort contains completely unseen players (`overlap == 0`).
    - Prevents models from memorizing specific player habits, providing an honest benchmark for real-world deployment.
 
+### Module 5: Near-Duplicate Detection & Contamination Analysis
+Analyzes lexical redundancy using TF-IDF cosine similarity matrices to evaluate train/test contamination risks:
+
+```bash
+# Run near-duplicate detection audit (default threshold >= 0.85)
+python src/similarity.py
+
+# Customize similarity threshold and number of demonstrated pairs
+python src/similarity.py --threshold 0.90 --top-n 5
+
+# Print educational breakdown on duplicate score inflation
+python src/similarity.py --explain-only
+```
+
+#### Key Module 5 Findings:
+1. **Redundancy Breakdown ($\ge 0.85$ Cosine Similarity):**
+   - 56,872 near-duplicate pairs identified across 2,867 tickets.
+   - **0.5% Same-Customer:** Prevented from leaking across splits by Module 4's `customer_aware_split`.
+   - **99.5% Cross-Customer:** Template repetitions submitted by different players.
+2. **Lexical vs. Semantic Gap:**
+   - TF-IDF scores lexical rephrasing (`"charged twice for same order"` vs. `"billed twice for single purchase"`) at only `0.1573` cosine similarity, motivating dense Sentence Transformer embeddings in Module 8.
+
 ---
 
 ## Roadmap
@@ -99,7 +121,7 @@ python src/evaluate.py --compare-splits --target category
 - [x] **Module 2:** Exploratory Data Analysis (`notebooks/exploration.ipynb`)
 - [x] **Module 3:** Feature Pipelines & Leakage Safeguards (`src/features.py`)
 - [x] **Module 4:** Leakage Analysis & Customer-Aware Evaluation (`src/evaluate.py`)
-- [ ] **Module 5:** Near-Duplicate Detection (`src/similarity.py`)
+- [x] **Module 5:** Near-Duplicate Detection (`src/similarity.py`)
 - [ ] **Module 6:** Category Classification Models (`src/train.py`)
 - [ ] **Module 7:** Priority Prediction Model (`src/train.py`)
 - [ ] **Module 8:** Similar Ticket Retrieval Index (`src/similarity.py`)
@@ -107,3 +129,4 @@ python src/evaluate.py --compare-splits --target category
 - [ ] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
 - [ ] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
 - [ ] **Module 12:** System Documentation & Final Report (`REPORT.md`)
+
