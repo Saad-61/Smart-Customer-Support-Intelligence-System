@@ -17,7 +17,8 @@
 8. [Module 6: Category Classification Models & Probability Calibration](#8-module-6-category-classification-models--probability-calibration)
 9. [Module 7: Priority Prediction Models & Feature Fusion](#9-module-7-priority-prediction-models--feature-fusion)
 10. [Module 8: Similar Ticket Retrieval Index & Semantic Search](#10-module-8-similar-ticket-retrieval-index--semantic-search)
-11. [Roadmap & Upcoming Modules](#11-roadmap--upcoming-modules)
+11. [Module 9: Model Explainability Engine & Feature Attribution](#11-module-9-model-explainability-engine--feature-attribution)
+12. [Roadmap & Upcoming Modules](#12-roadmap--upcoming-modules)
 
 ---
 
@@ -492,7 +493,96 @@ The index was tested against 3 diverse player complaints spanning billing, techn
 
 ---
 
-## 11. Roadmap & Upcoming Modules
+## 11. Module 9: Model Explainability Engine & Feature Attribution
+
+Implemented in [`src/evaluate.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/evaluate.py), this module provides transparent, auditable feature attributions explaining why the category classifier assigned a specific label to an incoming player ticket. It bridges the gap between black-box inference and operational trust for support triage agents.
+
+### 11.1 Mathematical Formulation: Platt-Scaled Linear Decision Hyperplanes
+Our production category model is a `LinearSVC` encapsulated inside a 3-fold `CalibratedClassifierCV(method="sigmoid")`. While Platt scaling computes non-linear sigmoid probability calibrations over distance margins, the underlying decision boundaries remain linear hyperplanes.
+
+1. **Coefficient Averaging Across Calibration Folds:**
+   Each cross-validation fold $k \in \{1, 2, 3\}$ fits an independent `LinearSVC` estimator yielding weight vector $\mathbf{w}_c^{(k)}$ for class $c$. The consensus class hyperplane is obtained via ensemble averaging:
+   $$\bar{\mathbf{w}}_c = \frac{1}{K}\sum_{k=1}^K \mathbf{w}_c^{(k)} \quad \in \mathbb{R}^{D}$$
+   where $D = 1,836$ represents the total dimensionality across text unigrams/bigrams, one-hot product indicators, and metadata features.
+
+2. **Local Feature Attribution (Instance Contribution):**
+   For a specific incoming ticket with transformed feature vector $\mathbf{x} = [x_1, x_2, \dots, x_D]^\top$, the additive push toward predicted class $c$ by feature $j$ is defined as:
+   $$\text{Contribution}_j = x_j \cdot \bar{w}_{c, j}$$
+   Features with $x_j > 0$ and $\bar{w}_{c, j} > 0$ represent terms typed by the player that directly propelled the model toward that classification.
+
+3. **Global Salience Fallback:**
+   If a short or non-standard ticket contains fewer than $N$ active vocabulary terms with positive weights, the engine backfills the explanation using top global class weights ($\bar{w}_{c, j} > 0$), providing context on what the model considers defining characteristics of that category.
+
+### 11.2 Empirical Demonstration Results
+The explainability engine was evaluated across 4 diverse customer complaints spanning distinct operational categories:
+
+#### Case 1: Account Ban Appeal
+- **Complaint:** *"I received a 14-day suspension for allegedly using scripts. I have never used an unauthorized program."* (Product: *League of Legends*)
+- **Predicted Category:** `Account Ban / Suspension` (Confidence: **97.4%**)
+
+| Rank | Feature Token | Class Weight ($\bar{w}_c$) | Local Contribution ($x_j \cdot \bar{w}_c$) | Interpretation |
+| :---: | :--- | :---: | :---: | :--- |
+| **1** | `"suspension"` | **+0.5090** | **+0.0977** | Core disciplinary term directly indicating an account penalty. |
+| **2** | `"have never"` | **+0.5150** | **+0.0954** | Classic innocence assertion bigram strongly prevalent in appeals. |
+| **3** | `"never"` | **+0.5730** | **+0.0853** | High-salience unigram typical of cheating/ban denial phrasing. |
+| **4** | `"14 day"` | **+0.3169** | **+0.0683** | Specific Riot penalty duration tier (14-day temporary suspension). |
+| **5** | `"day"` | **+0.3169** | **+0.0683** | Temporal duration token associated with timed disciplinary actions. |
+
+#### Case 2: Missing RP / Purchase Issue
+- **Complaint:** *"I purchased 1350 RP but my credit card was charged twice and no coins appeared in my account."* (Product: *League of Legends*)
+- **Predicted Category:** `Missing RP / Purchase Issue` (Confidence: **98.5%**)
+
+| Rank | Feature Token | Class Weight ($\bar{w}_c$) | Local Contribution ($x_j \cdot \bar{w}_c$) | Interpretation |
+| :---: | :--- | :---: | :---: | :--- |
+| **1** | `"charged"` | **+0.9277** | **+0.1524** | Dominant billing transaction action token. |
+| **2** | `"rp"` | **+0.8508** | **+0.1400** | Riot Points in-game currency acronym. |
+| **3** | `"twice"` | **+0.6103** | **+0.1352** | Duplicate charge frequency indicator. |
+| **4** | `"card"` | **+0.6626** | **+0.1276** | Financial payment instrument token. |
+| **5** | `"was charged"` | **+0.5988** | **+0.1153** | Passive financial transaction bigram. |
+
+#### Case 3: Client Bug / Crash Report
+- **Complaint:** *"Game freezes and crashes during champion select every time with a fatal directx error."* (Product: *Valorant*)
+- **Predicted Category:** `Client Bug / Crash` (Confidence: **60.9%**)
+
+| Rank | Feature Token | Class Weight ($\bar{w}_c$) | Local Contribution ($x_j \cdot \bar{w}_c$) | Interpretation |
+| :---: | :--- | :---: | :---: | :--- |
+| **1** | `"error"` | **+0.4884** | **+0.1270** | Primary technical crash diagnostic term. |
+| **2** | `"champion select"`| **+0.2699** | **+0.0807** | Game phase token where client hangs frequently occur. |
+| **3** | `"select"` | **+0.2699** | **+0.0807** | Champion selection sub-phase unigram. |
+| **4** | `"freezes"` | **+0.2358** | **+0.0778** | System unresponsiveness symptom descriptor. |
+| **5** | `"game"` | **+0.3338** | **+0.0586** | Contextual application token. |
+
+#### Case 4: Server Latency / Lag
+- **Complaint:** *"Constant high ping and severe packet loss every evening making ranked games unplayable."* (Product: *League of Legends*)
+- **Predicted Category:** `Server Latency / Lag` (Confidence: **65.2%**)
+
+| Rank | Feature Token | Class Weight ($\bar{w}_c$) | Local Contribution ($x_j \cdot \bar{w}_c$) | Interpretation |
+| :---: | :--- | :---: | :---: | :--- |
+| **1** | `"unplayable"` | **+0.4049** | **+0.1560** | Extreme performance degradation sentiment. |
+| **2** | `"packet"` | **+0.4049** | **+0.1560** | Network transmission unit token. |
+| **3** | `"packet loss"` | **+0.4049** | **+0.1560** | Network instability diagnostic bigram. |
+| **4** | `"ping"` | **+0.3495** | **+0.1514** | Network round-trip latency metric. |
+| **5** | `"games"` | **+0.2412** | **+0.0646** | General session plural token. |
+
+### 11.3 Architectural Comparison: Linear Feature Attribution vs. SHAP Shapley Values
+
+| Evaluation Dimension | Linear Feature Attribution ($x_j \cdot \bar{w}_j$) | SHAP (SHapley Additive exPlanations) | Practical Production Trade-off |
+| :--- | :--- | :--- | :--- |
+| **Theoretical Foundation** | First-order linear projection onto decision hyperplane | Cooperative Game Theory (Shapley values) | Linear is exact and native for linear models; SHAP handles arbitrary non-linearities. |
+| **Computation Latency** | **$< 0.1\,\text{ms}$** (vector element-wise multiply) | $\sim 50\text{--}500\,\text{ms}$ (sampling feature permutations) | **Linear attribution is $500\times$ faster**, essential for low-latency REST APIs. |
+| **Interaction Effects** | Assumes feature independence (no interaction modeling) | Captures feature interaction effects via coalition sampling | Linear suffices here because the text pipeline uses LinearSVC; tree models require SHAP. |
+| **Baseline Reference** | Zero feature presence ($x_j = 0$) | Expected model prediction over background distribution | Linear explanations are intuitive for NLP (present words vs. omitted words). |
+
+### 11.4 Methodological Limitations & Safety Disclosures
+1. **Correlation vs. Causation:** Linear weights indicate statistical co-occurrence within the training dataset, not true causal reasoning. A word like *"ticket"* or *"account"* may carry positive weight simply because it appeared frequently in that category's templates.
+2. **Context Blindness of Bag-of-Words:** TF-IDF unigrams/bigrams cannot parse long-range syntax, sarcasm (*"Great job Riot, the client froze again"*), or complex negations (*"I was NOT banned, my duo partner was"*).
+3. **Explaining Only the Final Classifier:** Coefficients explain the final linear boundary on preprocessed coordinates. They do not explain non-linear preprocessing steps (sublinear logarithmic term frequency scaling or IDF frequency suppression).
+4. **Class Imbalance & Support Artifacts:** Rare categories (e.g. `Server Latency / Lag` with 28 samples) may overfit to idiosyncrasies of specific player vocabulary.
+5. **Hyperplane Globality:** The underlying $\bar{\mathbf{w}}_c$ vectors are global per class. While weighting by $x_j$ pinpoints words in the ticket, it cannot detect non-linear feature threshold interactions.
+
+---
+
+## 12. Roadmap & Upcoming Modules
 
 | Module | Title | Target Artifacts | Status |
 | :--- | :--- | :--- | :---: |
@@ -505,8 +595,8 @@ The index was tested against 3 diverse player complaints spanning billing, techn
 | **6** | Category Classification Models | `src/train.py`, `models/category_model.joblib` | **COMPLETE** |
 | **7** | Priority Prediction Model | `src/train.py`, `models/priority_model.joblib` | **COMPLETE** |
 | **8** | Similar Ticket Retrieval Index | `src/similarity.py`, `models/retrieval_index.joblib` | **COMPLETE** |
-| **9** | Explainability Engine | `src/evaluate.py` | **NEXT** |
-| **10** | Confidence Calibration & OOD | `src/evaluate.py`, `models/calibration_curve.png` | UPCOMING |
+| **9** | Explainability Engine | `src/evaluate.py` | **COMPLETE** |
+| **10** | Confidence Calibration & OOD | `src/evaluate.py`, `models/calibration_curve.png` | **NEXT** |
 | **11** | FastAPI REST Inference Service | `api/app.py` | UPCOMING |
 | **12** | Project Wrap-up & Documentation | `README.md`, `REPORT.md` (final polish) | UPCOMING |
 
