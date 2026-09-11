@@ -645,7 +645,128 @@ Setting $\tau = 0.50$ provides a clean separation boundary:
 
 ---
 
-## 13. Roadmap & Upcoming Modules
+## 13. FastAPI REST Inference Service (Module 11)
+
+### 13.1 Architecture & Design Principles
+Serving machine learning models in a customer-facing production environment requires strict separation of concerns between offline model training and real-time online inference:
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    FASTAPI LIFESPAN INITIALIZATION                                 |
+|                                                                                                    |
+|  models/category_model.joblib   --> [Category Pipeline: Platt LinearSVC]      --> app.state        |
+|  models/priority_model.joblib   --> [Priority Pipeline: SVD + XGBoost GPU]    --> app.state        |
+|  models/retrieval_index.joblib  --> [Dense Embedding Index: 2,867 Vectors]   --> app.state        |
+|  sentence-transformers          --> [all-MiniLM-L6-v2 on NVIDIA RTX 3050 GPU] --> app.state        |
++----------------------------------------------------------------------------------------------------+
+                                                 │
+                                                 ▼
++────────────────────────────────────────────────────────────────────────────────────────────────────+
+|                                      INCOMING HTTP REQUESTS                                        |
++────────────────────────────────────────────────────────────────────────────────────────────────────+
+        │                                        │                                   │
+        ▼                                        ▼                                   ▼
+  POST /predict                            POST /similar                       POST /explain
+  • Validate Schema (Pydantic)             • Dense Cosine Search               • Decision Hyperplane
+  • Platt Category (Calibrated)            • Top-K Historical Matches          • Word/Bigram Attribution
+  • OOD Guardrail (< 0.50)                 • CUDA GPU Accelerated              • Active Contributions
+  • XGBoost Priority (GPU)                 • Sub-10ms Latency                  • Sub-1ms Latency
+  • Explainability Attributions
+  • Dense Semantic Retrieval (Top-3)
+  • Latency Benchmark (< 30ms)
+```
+
+1. **Lifespan Context Manager (`lifespan`):**
+   - In modern FastAPI (`FastAPI >= 0.115`), startup events are orchestrated via an asynchronous context manager.
+   - All 3 trained artifacts (`category_model.joblib`, `priority_model.joblib`, `retrieval_index.joblib`) and the neural sentence transformer model (`all-MiniLM-L6-v2`) are loaded once into memory (`app.state`) during boot.
+   - **Zero Disk I/O per Request:** Individual HTTP inference requests never access the filesystem or re-instantiate transformers, completely eliminating cold-start latency.
+2. **GPU Hardware Acceleration:**
+   - The neural sentence transformer and the XGBoost tree booster run natively on the host's **NVIDIA GeForce RTX 3050 6GB Laptop GPU** (`device="cuda"`), falling back cleanly to multi-threaded CPU execution if CUDA is unavailable.
+
+---
+
+### 13.2 REST API Specification & Endpoints
+
+| Method | Route | Description | Request Body | Response Schema |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/` | Service root and documentation metadata | None | Service info & links |
+| `GET` | `/health` | Health & hardware readiness probe | None | `HealthResponse` |
+| `POST` | `/predict` | Comprehensive multi-task triage | `TicketRequest` | `PredictionResponse` |
+| `POST` | `/similar` | Standalone dense semantic search | `SimilarRequest` | `SimilarResponse` |
+| `POST` | `/explain` | Standalone linear feature attribution | `ExplainRequest` | `ExplainResponse` |
+
+#### Data Contracts (Pydantic v2):
+- **`TicketRequest`**:
+  - `ticket_text: str` (enforces non-empty string, auto-strips whitespace, raises `HTTP 422 Unprocessable Entity` on blank input).
+  - `product: str` (defaults to `"League of Legends"`, handles unseen products gracefully via zero-vector OHE fallback).
+  - `previous_tickets: int` (defaults to `0`, constrained to non-negative integers).
+- **`PredictionResponse`**:
+  - `category: str` & `category_confidence: float` (Platt-scaled sigmoid probability).
+  - `priority: str` & `priority_confidence: float` (XGBoost class probability).
+  - `calibrated_note: str` (explicitly documents calibration methodology).
+  - `similar_tickets: list[SimilarTicket]` (top-3 semantically closest historical tickets).
+  - `explanation: list[ExplanationFeature]` (top explanatory features with weights and local contributions).
+  - `uncertain: bool` (out-of-distribution flag triggered when max confidence $< 0.50$).
+  - `processing_time_ms: float` (end-to-end request latency).
+
+---
+
+### 13.3 End-to-End Test & Verification Results
+The test suite in [`tests/test_api.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/tests/test_api.py) executes 6 verification checks using FastAPI's `TestClient` across CPU and CUDA:
+
+```
+================================================================================
+  RUNNING FASTAPI REST SERVICE TEST SUITE
+================================================================================
+
+[1/6] Testing GET / ...
+ -> GET / PASSED: Riot Games Smart Customer Support Intelligence System API
+
+[2/6] Testing GET /health ...
+ -> GET /health PASSED: device='cuda', total_indexed=2867
+
+[3/6] Testing POST /predict (In-Domain complaint) ...
+ -> Category: 'Missing RP / Purchase Issue' (confidence: 0.9883)
+ -> Priority: 'MEDIUM' (confidence: 0.5244)
+ -> Uncertain (OOD): False
+ -> Processing latency: 28.4 ms
+ -> Top explanation features: ['charged', 'rp', 'twice']
+ -> Similar tickets retrieved: 3
+ -> POST /predict (In-Domain) PASSED!
+
+[4/6] Testing POST /predict with empty/whitespace input (Validation check) ...
+ -> Validation check PASSED: Received HTTP 422 Unprocessable Entity as required.
+
+[5/6] Testing POST /predict with Out-of-Distribution (OOD) query ...
+ -> OOD Category confidence: 0.4466
+ -> OOD Uncertain flag: True
+ -> OOD guardrail check PASSED!
+
+[6/6] Testing POST /similar and POST /explain ...
+ -> POST /similar PASSED: Retrieved 3 nearest tickets.
+ -> POST /explain PASSED: Category 'Account Ban / Suspension' explained by ['party', 'third', 'third party', 'for'].
+
+================================================================================
+  ALL FASTAPI REST INFERENCE SERVICE TESTS PASSED PERFECTLY!
+================================================================================
+```
+
+---
+
+### 13.4 Running the Service & Interactive OpenAPI Documentation
+The REST API is launched using `uvicorn`:
+
+```bash
+uvicorn api.app:app --reload --port 8000
+```
+
+FastAPI automatically compiles and exposes interactive API documentation:
+- **Swagger UI:** `http://localhost:8000/docs`
+- **ReDoc:** `http://localhost:8000/redoc`
+
+---
+
+## 14. Roadmap & Upcoming Modules
 
 | Module | Title | Target Artifacts | Status |
 | :--- | :--- | :--- | :---: |
@@ -660,8 +781,8 @@ Setting $\tau = 0.50$ provides a clean separation boundary:
 | **8** | Similar Ticket Retrieval Index | `src/similarity.py`, `models/retrieval_index.joblib` | **COMPLETE** |
 | **9** | Explainability Engine | `src/evaluate.py` | **COMPLETE** |
 | **10** | Confidence Calibration & OOD | `src/evaluate.py`, `models/calibration_curve.png` | **COMPLETE** |
-| **11** | FastAPI REST Inference Service | `api/app.py` | **NEXT** |
-| **12** | Project Wrap-up & Documentation | `README.md`, `REPORT.md` (final polish) | UPCOMING |
+| **11** | FastAPI REST Inference Service | `api/app.py`, `tests/test_api.py` | **COMPLETE** |
+| **12** | Project Wrap-up & Documentation | `README.md`, `REPORT.md` (final polish) | **NEXT** |
 
 ---
 *Report maintained alongside codebase updates. Last modified: September 2026.*

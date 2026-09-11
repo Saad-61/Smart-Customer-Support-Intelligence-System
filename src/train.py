@@ -579,6 +579,10 @@ def load_priority_model(path: str | Path = "models/priority_model.joblib") -> Pi
     load_path = Path(path)
     if not load_path.exists():
         raise FileNotFoundError(f"Model artifact not found at: {load_path.resolve()}")
+    # Register PriorityXGBClassifier on __main__ for unpickling compatibility
+    main_mod = sys.modules.setdefault("__main__", sys.modules[__name__])
+    if not hasattr(main_mod, "PriorityXGBClassifier"):
+        setattr(main_mod, "PriorityXGBClassifier", PriorityXGBClassifier)
     return joblib.load(load_path)
 
 

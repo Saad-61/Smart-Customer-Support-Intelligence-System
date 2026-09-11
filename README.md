@@ -224,6 +224,66 @@ python src/evaluate.py --explain-calibration
 - **OOD Guardrail Precision:** Successfully intercepted all off-domain queries (weather at 45.5%, recipes at 37.1%, trivia at 38.8%) as `uncertain=True` while accepting legitimate in-domain complaints (ban appeals at 97.3%, billing at 98.8%, crash diagnostics at 59.4%).
 - **Saved Artifact:** `models/calibration_curve.png` (2-panel publication-grade reliability plot).
 
+### Module 11: FastAPI REST Inference Service
+Serves real-time multi-task machine learning predictions through a production-grade FastAPI REST API (`api/app.py`). Unifies category classification, priority prediction, dense semantic retrieval on GPU, linear feature attribution, and OOD uncertainty detection:
+
+```bash
+# Start the production REST inference service
+uvicorn api.app:app --reload --port 8000
+
+# Open interactive OpenAPI documentation (Swagger UI) in browser
+# http://localhost:8000/docs
+```
+
+#### API Endpoints:
+- `POST /predict`: Unified multi-task triage endpoint (Category + Platt confidence, Priority + confidence, OOD check, Top-5 feature explanations, Top-3 similar tickets).
+- `POST /similar`: Standalone semantic retrieval endpoint for finding historical similar tickets via CUDA dense embeddings.
+- `POST /explain`: Standalone model explainability endpoint returning salient terms and contributions ($x_j \cdot \bar{w}_j$).
+- `GET /health`: Health and readiness probe reporting loaded models and CUDA GPU acceleration status.
+- `GET /`: API root metadata and documentation links.
+
+#### Sample Request & Multi-Task Response:
+```bash
+# Query the /predict endpoint using curl
+curl -X POST "http://localhost:8000/predict" \
+     -H "Content-Type: application/json" \
+     -d '{"ticket_text": "I was charged twice for the same RP bundle", "product": "League of Legends"}'
+```
+
+```json
+{
+  "category": "Missing RP / Purchase Issue",
+  "priority": "MEDIUM",
+  "category_confidence": 0.9883,
+  "priority_confidence": 0.5244,
+  "calibrated_note": "Confidence is Platt-scaled (sigmoid calibration). Not a raw model score.",
+  "similar_tickets": [
+    {
+      "ticket_id": "RGT-000889",
+      "similarity": 0.8142,
+      "preview": "I bought the RP bundle yesterday and got charged twice on my card.",
+      "category": "Missing RP / Purchase Issue",
+      "priority": "HIGH",
+      "product": "League of Legends"
+    }
+  ],
+  "explanation": [
+    {"feature": "charged", "weight": 0.9277, "contribution": 0.2097},
+    {"feature": "rp", "weight": 0.8508, "contribution": 0.1927},
+    {"feature": "twice", "weight": 0.6103, "contribution": 0.186}
+  ],
+  "uncertain": false,
+  "processing_time_ms": 28.4
+}
+```
+
+#### Key Module 11 Architecture & Design Decisions:
+- **FastAPI Lifespan Context Manager:** All 3 serialized models and the `all-MiniLM-L6-v2` transformer weights are loaded once into `app.state` at boot. Zero per-request disk reads.
+- **Hardware Acceleration:** Runs transformer embeddings and XGBoost scoring on NVIDIA GeForce RTX 3050 Laptop GPU (`device="cuda"`).
+- **Automated Validation:** Strict Pydantic v2 schemas reject empty or whitespace-only queries with `HTTP 422 Unprocessable Entity`.
+- **Out-of-Distribution Safety:** Flags off-domain or nonsense complaints with `uncertain=True` when maximum Platt confidence falls below 50%.
+- **Test Automation:** Validated with end-to-end integration tests in `tests/test_api.py`.
+
 ---
 
 ## Roadmap
@@ -239,7 +299,7 @@ python src/evaluate.py --explain-calibration
 - [x] **Module 8:** Similar Ticket Retrieval Index (`src/similarity.py`)
 - [x] **Module 9:** Model Explainability (`src/evaluate.py`)
 - [x] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
-- [ ] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
+- [x] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
 - [ ] **Module 12:** System Documentation & Final Report (`REPORT.md`)
 
 
