@@ -1,0 +1,293 @@
+# Riot Games Smart Customer Support Intelligence System
+# Comprehensive Technical Analysis & Progress Report
+
+> **Authors:** Engineering & Applied ML Pair Programming  
+> **Status:** Living Document — Updated continuously across Module Milestones  
+> **Current Milestone:** Completed Modules 0 through 5  
+
+---
+
+## Table of Contents
+1. [Executive Summary & System Architecture](#1-executive-summary--system-architecture)
+2. [Module 0: Dataset Generation & Ground Truth Formulation](#2-module-0-dataset-generation--ground-truth-formulation)
+3. [Module 1: Data Cleaning & Preprocessing Audit](#3-module-1-data-cleaning--preprocessing-audit)
+4. [Module 2: Exploratory Data Analysis & Empirical Insights](#4-module-2-exploratory-data-analysis--empirical-insights)
+5. [Module 3: Feature Engineering & Preprocessing Architecture](#5-module-3-feature-engineering--preprocessing-architecture)
+6. [Module 4: Leakage Analysis & Evaluation Strategy](#6-module-4-leakage-analysis--evaluation-strategy)
+7. [Module 5: Near-Duplicate Detection & Contamination Analysis](#7-module-5-near-duplicate-detection--contamination-analysis)
+8. [Roadmap & Upcoming Modules](#8-roadmap--upcoming-modules)
+
+---
+
+## 1. Executive Summary & System Architecture
+
+This report provides an in-depth technical audit, empirical evaluation, and architectural record for the **Riot Games Smart Customer Support Intelligence System**. The project develops a multi-stage AI/ML system designed to ingest, classify, prioritize, retrieve, and explain player support tickets across Riot Games titles (*League of Legends*, *Valorant*, *Teamfight Tactics*, *Wild Rift*, and *Legends of Runeterra*).
+
+```
++--------------------------------------------------------------------------------------------------+
+|                                    INCOMING SUPPORT TICKET                                       |
+|                  (ticket_text, product, customer_id, previous_tickets, created_at)               |
++--------------------------------------------------------------------------------------------------+
+                                                 |
+                                                 v
++--------------------------------------------------------------------------------------------------+
+|                                   DATA CLEANING & FEATURE EXTRACTION                             |
+|  - Text normalization & cleaning (Module 1)                                                      |
+|  - Temporal feature extraction: hour_of_day, day_of_week, month (Module 1)                        |
+|  - ColumnTransformer: TF-IDF (15k) + OneHotEncoder + StandardScaler (Module 3)                   |
++--------------------------------------------------------------------------------------------------+
+         |                                       |                                       |
+         v                                       v                                       v
++-----------------------+               +-----------------------+               +-----------------------+
+|  CATEGORY CLASSIFIER  |               |  PRIORITY PREDICTION  |               |   SEMANTIC RETRIEVAL  |
+|  LinearSVC (Sigmoid   |               |  LightGBM / Boosting  |               |  Sentence-Transformer |
+|  Calibration)         |               |  (3 Urgency Levels)   |               |  Top-5 Past Tickets   |
+|  [Module 6, 9, 10]    |               |  [Module 7]           |               |  [Module 8]           |
++-----------------------+               +-----------------------+               +-----------------------+
+         |                                       |                                       |
+         +---------------------------------------+---------------------------------------+
+                                                 |
+                                                 v
++--------------------------------------------------------------------------------------------------+
+|                                  FASTAPI REST SERVICE (Module 11)                                |
+|           Endpoints: /predict (with confidence, calibration note, explanation, retrieval)        |
++--------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## 2. Module 0: Dataset Generation & Ground Truth Formulation
+
+### 2.1 Synthetic Data Generation Strategy
+To provide realistic operational telemetry without compromising private player data, a domain-accurate synthetic data generator was implemented in [`src/generate_dataset.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/generate_dataset.py). The generator synthesizes realistic distributions based on real-world support ticket mechanics:
+
+- **Volume:** 3,000 base tickets synthesized from 493 unique simulated customers.
+- **Power User Concentration:** A power-law customer behavior is modeled where a small subset (~5%) of "chronic complainers" or heavy users accounts for ~25% of overall ticket traffic.
+- **Category Taxonomy:** 10 distinct operational categories with realistic class imbalances (dominant account bans down to rare server connectivity issues).
+- **Target Urgency:** 3 priority tiers: `MEDIUM` (~50%), `LOW` (~30%), and `HIGH` (~20%).
+
+### 2.2 Injected Data Quality Anomalies
+To replicate real-world data collection failures, intentional data quality defects were injected into the raw corpus (`data/raw/tickets.csv`):
+- **Missing `ticket_text` (~4.0%):** Simulates empty form submissions.
+- **Missing `previous_tickets` (~3.0%):** Simulates database join gaps.
+- **Malformed `created_at` timestamps (~1.5%):** Unparseable formats (`"13/32/2023"`, `"not-a-date"`, `""`).
+- **Exact duplicate tickets (~2.0%):** Duplicate web form submissions with new ticket IDs.
+- **Outlier `resolution_time` (~0.5%):** Corrupted values (`-5.0`, `9999.0`, `50000.0` hours).
+- **Negative `previous_tickets` (~0.3%):** Numerical corruption (`-1`, `-5`, `-999`).
+- **Near-duplicate paraphrased complaints:** 15 injected pairs with rephrased wording from the same customer.
+
+---
+
+## 3. Module 1: Data Cleaning & Preprocessing Audit
+
+Implemented in [`src/preprocessing.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/preprocessing.py), this module audits anomalies, repairs corrupt records, normalizes NLP text, and extracts temporal signals.
+
+### 3.1 Data Quality Audit Findings
+
+| Anomaly / Check | Raw Count | Raw % | Action Taken | Rationale |
+| :--- | :---: | :---: | :--- | :--- |
+| **Missing `ticket_text`** | 126 | 4.08% | **Dropped** | `ticket_text` is the primary NLP feature; imputing it with placeholder strings would distort TF-IDF vocabulary distributions. |
+| **Malformed `created_at`** | 45 | 1.45% | **Dropped** | Invalid timestamps prevent temporal feature engineering (`hour_of_day`, `day_of_week`, `month`). |
+| **Exact Duplicate Rows** | 60 | 1.94% | **Removed (kept 1st)** | Form submission retries duplicate existing complaints and artificially weight training gradients. |
+| **Negative `previous_tickets`** | 9 | 0.29% | **Clamped to 0** | Negative ticket counts represent signed integer overflow/corruption; clamping to 0 safely assumes zero known history. |
+| **Missing `previous_tickets`** | 89 | 2.88% | **Imputed with 0** | Conservative operational assumption. |
+| **Outlier `resolution_time`** | 15 | 0.49% | **Capped to [0, 8760]** | Capped at 1 year max instead of dropping to preserve valid ticket attributes. |
+| **Missing `resolution_time`** | 56 | 1.81% | **Preserved / Median** | Left `NaN` for unresolved tickets (valid business state); imputed with column median for resolved tickets. |
+
+### 3.2 Dataset Pipeline Transitions
+- **Raw Input (`data/raw/tickets.csv`):** 3,090 rows $\times$ 10 columns
+- **Clean Output (`data/processed/tickets_clean.csv`):** 2,867 rows $\times$ 16 columns
+- **New Engineered Attributes:** `hour_of_day`, `day_of_week`, `month`, `text_length`, `word_count`, `is_near_duplicate`.
+
+---
+
+## 4. Module 2: Exploratory Data Analysis & Empirical Insights
+
+Implemented and executed in [`notebooks/exploration.ipynb`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/notebooks/exploration.ipynb), 10 comprehensive analytical visualizations were conducted to diagnose class representation, player behavior, text length distributions, and operational temporal spikes.
+
+### Figure 1: Category Frequency Distribution
+![Figure 1: Category Distribution](reports/figures/01_category_distribution.png)
+- **Empirical Observation:** Severe long-tail imbalance. *Account Ban / Suspension* dominates the dataset (664 tickets; 23.2%), while *Server Latency / Lag* is an extreme minority class (28 tickets; 1.0%).
+- **ML Implication:** Standard cross-entropy optimization will bias predictions toward ban appeals while ignoring rare server outages. Models must utilize `class_weight="balanced"` and evaluation must be guided by **Macro F1**, not accuracy.
+
+---
+
+### Figure 2: Priority Distribution
+![Figure 2: Priority Distribution](reports/figures/02_priority_distribution.png)
+- **Empirical Observation:** Urgency is heavily concentrated in `MEDIUM` priority (1,452 tickets; 50.6%) and `LOW` priority (860 tickets; 30.0%). Critical `HIGH` priority complaints comprise only 19.4% (555 tickets).
+- **ML Implication:** Predicting `MEDIUM` by default yields ~51% naive accuracy. A high-stakes priority classifier must optimize recall on `HIGH` priority tickets to prevent critical revenue-impacting issues from stalling in triage.
+
+---
+
+### Figure 3: Pre-Cleaning Missing Values Heatmap
+![Figure 3: Missing Values Heatmap](reports/figures/03_missing_values_heatmap.png)
+- **Empirical Observation:** Visualizes null value distribution across the raw corpus. `resolution_time` exhibits missing values primarily on unresolved tickets (~18%), with isolated missing blocks in `ticket_text` and `previous_tickets`.
+- **ML Implication:** Confirms that `resolution_time` missingness is informative (MCAR/MAR distinction), affirming that unresolved tickets must not be imputed with zero.
+
+---
+
+### Figure 4: Ticket Text Length & Word Count Distributions
+![Figure 4: Text Length Distribution](reports/figures/04_text_length_distribution.png)
+- **Empirical Observation:** Mean character length is 108.6 characters (median: 104, min: 27, max: 201), with word counts averaging 18.2 words. Complaint texts follow a multi-modal distribution centered around standardized issue descriptions.
+- **ML Implication:** Player support complaints are succinct and information-dense. TF-IDF unigrams and bigrams are well-suited because key intent is captured in compact 2-to-3 word phrases (e.g., *"permaban appeal"*, *"charged twice"*).
+
+---
+
+### Figure 5: Text Length vs. Resolution Time Scatter
+![Figure 5: Text Length vs Resolution Time](reports/figures/05_text_length_vs_resolution_time.png)
+- **Empirical Observation:** Resolution time exhibits little to no correlation with text length ($R^2 \approx 0.01$). However, color-coding by priority reveals vertical clustering: `HIGH` priority tickets resolve rapidly ($< 15$ hours), whereas `LOW` priority tickets stretch to 80+ hours.
+- **ML Implication:** Text length has zero predictive power for resolution duration. The strong stratification between priority and resolution duration confirms that `resolution_time` is a direct consequence of priority triage—using it as a predictive input would be fatal target leakage.
+
+---
+
+### Figure 6: Top-20 Customers by Support Load
+![Figure 6: Top Customers](reports/figures/06_top_customers.png)
+- **Empirical Observation:** The top 20 customers submit between 15 and 32 tickets each, generating over 450 tickets (~16% of the entire support queue).
+- **ML Implication:** If tickets from these power users are split randomly across train and test sets, the model will memorize player-specific writing styles, inflating validation metrics. A **Customer-Aware Split** is non-negotiable.
+
+---
+
+### Figure 7: Ticket Distribution by Product
+![Figure 7: Tickets per Product](reports/figures/07_tickets_per_product.png)
+- **Empirical Observation:** Ticket load is distributed across the 5 Riot titles, with *League of Legends* and *Valorant* representing the largest volume (~45% combined), followed by *Wild Rift*, *TFT*, and *Legends of Runeterra*.
+- **ML Implication:** One-hot encoding game titles with an `unknown_value="ignore"` fallback is essential so that future game titles or sub-services do not break production API inference.
+
+---
+
+### Figure 8: Monthly Ticket Volume (2023 - 2024)
+![Figure 8: Monthly Ticket Volume](reports/figures/08_monthly_ticket_volume.png)
+- **Empirical Observation:** Ticket volume remains stable between 140 and 190 tickets per month over an 18-month timeline, showing expected minor seasonal variations around summer gaming periods.
+- **ML Implication:** Ticket generation has no catastrophic seasonal drift, indicating that static training and cross-sectional customer splits will provide reliable evaluation baselines.
+
+---
+
+### Figure 9: Priority Distribution within Categories
+![Figure 9: Priority by Category](reports/figures/09_priority_by_category.png)
+- **Empirical Observation:** Urgency distributions vary by topic: *Missing RP / Purchase Issues* and *Account Bans* have higher proportions of `HIGH` priority tickets, whereas *Champion / Skin Bugs* and *Client Bugs* skew heavily toward `LOW` priority.
+- **ML Implication:** While category correlates with priority, it does not determine it entirely. Multi-modal feature fusion (combining text sentiment with product and operational history) is required for priority estimation.
+
+---
+
+### Figure 10: Hourly Ticket Submission Distribution
+![Figure 10: Hourly Submission Distribution](reports/figures/10_hourly_submission_distribution.png)
+- **Empirical Observation:** Hourly submission volume shows clear diurnal peaks during evening gaming hours (18:00 to 23:00 local time) and dips in early morning hours (03:00 to 07:00).
+- **ML Implication:** Cyclical temporal features (`hour_of_day`, `day_of_week`) provide genuine pre-resolution operational context for queue management models.
+
+---
+
+## 5. Module 3: Feature Engineering & Preprocessing Architecture
+
+Implemented in [`src/features.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/features.py), this module establishes modular, leak-free feature transformation pipelines using scikit-learn.
+
+### 5.1 Pipeline Structure
+```python
+build_full_pipeline(max_tfidf_features=15000) -> ColumnTransformer:
+    ├── "text": TfidfVectorizer(max_features=15000, ngram_range=(1,2), sublinear_tf=True, min_df=2)
+    ├── "cat":  OneHotEncoder(handle_unknown="ignore", sparse_output=False) -> ["product"]
+    └── "num":  SimpleImputer(strategy="median") -> StandardScaler() -> ["previous_tickets", "hour_of_day", "day_of_week", "month"]
+```
+
+### 5.2 The "Fit/Transform vs. Transform-Only" Rule
+To ensure zero data leakage from validation/test sets:
+- **Rule:** Feature transformers are instantiated but **never fitted upon module import or global scope**.
+- **Execution:** Transformers call `.fit_transform()` exclusively on the training partition inside the training script, and `.transform()` on testing and production inference queries. Fitting on the full dataset would leak corpus-wide IDF weights and standardization means/variances into the test set.
+
+### 5.3 Data Leakage Audit Report
+| Feature Name | Leakage Classification | Technical Reason for Exclusion |
+| :--- | :--- | :--- |
+| `resolution_time` | **Post-Outcome Variable** | Recorded only after an agent closes the ticket. Unknown at intake. |
+| `resolved` | **Post-Outcome Variable** | Indicator of completed triage. Unknown at intake. |
+
+---
+
+## 6. Module 4: Leakage Analysis & Evaluation Strategy
+
+Implemented in [`src/evaluate.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/evaluate.py), this module establishes an evaluation methodology that prevents data contamination and benchmarks generalization on completely unseen players.
+
+### 6.1 Data Leakage Experiment Results (`target='priority'`)
+To prove how post-outcome variables deceptively distort model performance, two identical `LogisticRegression` models were trained:
+- **Model A (Leaky):** Clean features + `resolution_time` + `resolved`
+- **Model B (Clean):** Clean pre-resolution features only
+
+| Model Configuration | Features Included | Accuracy | Macro F1 | Weighted F1 |
+| :--- | :--- | :---: | :---: | :---: |
+| **Model A (LEAKY)** | Text + Product + Metadata + `res_time` + `resolved` | **48.08%** | **48.25%** | **48.51%** |
+| **Model B (CLEAN)** | Text + Product + Metadata (Clean Pre-Resolution) | **32.93%** | **32.35%** | **33.32%** |
+| **Artificial Distortion** | Score inflation caused by target leakage | **+15.16%** | **+15.90%** | **+15.19%** |
+
+> **Operational Rationale:** Because `resolution_time` was generated conditionally on priority (HIGH=4h, MEDIUM=24h, LOW=72h), Model A exploits the resolution duration rather than understanding complaint urgency. When deployed to a live intake queue where `resolution_time` is null, Model A collapses completely.
+
+### 6.2 Split Benchmark: Random vs. Customer-Aware Split
+To measure the impact of repeat-customer memorization, models were evaluated on two different splitting strategies:
+
+```
+Random Row Split (Naive):
++------------------------------------+------------------------------------+
+|  Train Set: Contains Customer A    |  Test Set: Contains Customer A     |  <-- Contamination!
++------------------------------------+------------------------------------+
+
+Customer-Aware Split (Leak-Free):
++------------------------------------+------------------------------------+
+|  Train Set: Customers A, B, C, D   |  Test Set: Customers E, F, G       |  <-- Zero Overlap!
++------------------------------------+------------------------------------+
+```
+
+#### Split Benchmark Results:
+| Target | Split Strategy | Train / Test Rows | Shared Test Customers | Accuracy | Macro F1 |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Priority** | Random Split (Naive) | 2,293 / 574 | **303 (98.7% shared)** | 32.93% | 32.35% |
+| **Priority** | Customer-Aware Split | 2,287 / 580 | **0 (0% shared)** | **32.59%** | **32.20%** |
+| **Priority Gap** | Honest Generalization Drop | — | — | **-0.34%** | **-0.15%** |
+| **Category** | Random Split | 2,293 / 574 | 303 (98.7% shared) | 100.00% | 100.00% |
+| **Category** | Customer-Aware Split | 2,287 / 580 | 0 (0% shared) | 100.00% | 100.00% |
+
+---
+
+## 7. Module 5: Near-Duplicate Detection & Contamination Analysis
+
+Implemented in [`src/similarity.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/similarity.py), this module audits lexical and semantic near-duplicates using pairwise TF-IDF cosine similarity matrices.
+
+### 7.1 Pairwise Redundancy Audit ($\ge 0.85$ Cosine Similarity)
+- **Total Clean Tickets Analyzed:** 2,867 tickets
+- **Total Upper-Triangle Near-Duplicate Pairs:** 56,872 pairs meeting $\ge 0.85$ similarity
+  - **Same-Customer Duplicates:** 257 pairs (0.5%) — repeat tickets from the same player.
+  - **Cross-Customer Duplicates:** 56,615 pairs (99.5%) — identical template instances submitted by different players.
+
+### 7.2 The Lexical vs. Semantic Limitation Case Study
+A critical comparison between lexical matching and semantic intent was evaluated on injected near-duplicate complaints:
+
+```text
+Ticket A: "i was charged twice for the same order."
+Ticket B: "my credit card was billed twice for a single purchase."
+
+Shared Words:              ['for', 'twice', 'was']
+TF-IDF Cosine Similarity:   0.1573  <-- Missed by TF-IDF (Threshold >= 0.85)
+```
+
+#### Key Technical Insight:
+- **TF-IDF Strengths:** Detects near-identical template re-use and boilerplates with varying account tags (scores $>0.95$).
+- **TF-IDF Failure Mode:** Completely misses paraphrased complaints where synonymous words express identical intent (*"charged"* vs. *"billed"*, *"order"* vs. *"purchase"*), yielding an unacceptably low similarity of **`0.1573`**.
+- **System Evolution:** This empirical limitation justifies upgrading to **Sentence Transformers** (`all-MiniLM-L6-v2`) in Module 8 for dense semantic retrieval.
+
+---
+
+## 8. Roadmap & Upcoming Modules
+
+| Module | Title | Target Artifacts | Status |
+| :---: | :--- | :--- | :---: |
+| **0** | Synthetic Dataset Generation | `data/raw/tickets.csv`, `src/generate_dataset.py` | **COMPLETE** |
+| **1** | Data Cleaning & Preprocessing | `data/processed/tickets_clean.csv`, `src/preprocessing.py` | **COMPLETE** |
+| **2** | Exploratory Data Analysis | `notebooks/exploration.ipynb`, `reports/figures/*.png` | **COMPLETE** |
+| **3** | Feature Engineering Pipeline | `src/features.py` | **COMPLETE** |
+| **4** | Leakage Analysis & Evaluation | `src/evaluate.py` | **COMPLETE** |
+| **5** | Near-Duplicate Detection | `src/similarity.py` | **COMPLETE** |
+| **6** | Category Classification Models | `src/train.py`, `models/category_model.joblib` | **NEXT** |
+| **7** | Priority Prediction Model | `src/train.py`, `models/priority_model.joblib` | UPCOMING |
+| **8** | Similar Ticket Retrieval Index | `src/similarity.py`, `models/retrieval_index.joblib` | UPCOMING |
+| **9** | Explainability Engine | `src/evaluate.py` | UPCOMING |
+| **10** | Confidence Calibration & OOD | `src/evaluate.py`, `models/calibration_curve.png` | UPCOMING |
+| **11** | FastAPI REST Inference Service | `api/app.py` | UPCOMING |
+| **12** | Project Wrap-up & Documentation | `README.md`, `REPORT.md` (final polish) | UPCOMING |
+
+---
+*Report maintained alongside codebase updates. Last modified: September 2026.*
