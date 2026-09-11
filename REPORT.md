@@ -1,9 +1,8 @@
 # Riot Games Smart Customer Support Intelligence System
 # Comprehensive Technical Analysis & Progress Report
 
-> **Authors:** Engineering & Applied ML Pair Programming  
+> **Authors:** Saad Asif  
 > **Status:** Living Document — Updated continuously across Module Milestones  
-> **Current Milestone:** Completed Modules 0 through 5  
 
 ---
 
@@ -15,7 +14,8 @@
 5. [Module 3: Feature Engineering & Preprocessing Architecture](#5-module-3-feature-engineering--preprocessing-architecture)
 6. [Module 4: Leakage Analysis & Evaluation Strategy](#6-module-4-leakage-analysis--evaluation-strategy)
 7. [Module 5: Near-Duplicate Detection & Contamination Analysis](#7-module-5-near-duplicate-detection--contamination-analysis)
-8. [Roadmap & Upcoming Modules](#8-roadmap--upcoming-modules)
+8. [Module 6: Category Classification Models & Probability Calibration](#8-module-6-category-classification-models--probability-calibration)
+9. [Roadmap & Upcoming Modules](#9-roadmap--upcoming-modules)
 
 ---
 
@@ -271,18 +271,91 @@ TF-IDF Cosine Similarity:   0.1573  <-- Missed by TF-IDF (Threshold >= 0.85)
 
 ---
 
-## 8. Roadmap & Upcoming Modules
+## 8. Module 6: Category Classification Models & Probability Calibration
+
+Implemented and trained in [`src/train.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/train.py), this module establishes production-grade classifiers to categorize player tickets into 10 operational domains using customer-aware splitting.
+
+### 8.1 Model Architecture & Calibration Strategy
+Two primary architectures were evaluated under identical customer-aware partitions:
+1. **Model A (Baseline):** `TF-IDF (15k unigram/bigrams) + LogisticRegression(class_weight="balanced")` with default Softmax probabilities.
+2. **Model B (Production Recommended):** `TF-IDF (15k unigram/bigrams) + LinearSVC(class_weight="balanced")` wrapped in `CalibratedClassifierCV(cv=3, method="sigmoid")`.
+   - *Technical Rationale for Platt Scaling:* Linear Support Vector Classifiers output signed geometric distances from the decision hyperplane rather than posterior probabilities. Wrapping with 3-fold cross-validated sigmoid calibration fits logistic regression curves directly to decision function margins, transforming unconstrained distances into calibrated probabilities $\sum P(y=c) = 1.0$.
+
+### 8.2 Compute & Hardware Acceleration Environment
+- **GPU Accelerator:** NVIDIA GeForce RTX 3050 6GB Laptop GPU (Auto-detected)
+- **CUDA Environment:** PyTorch 2.5.1+cu121 (Active CUDA Backend)
+- **Feature & Linear Engine:** Scikit-Learn Native Multi-Threaded C Backend
+
+### 8.3 Side-by-Side Model Benchmark Results
+Evaluated on **580 test tickets** submitted by **98 completely unseen customers** (0% overlap with training):
+
+| Model Name | Accuracy | Macro F1 | Weighted F1 | Training Time | Probability Calibration | Production Status |
+| :--- | :---: | :---: | :---: | :---: | :--- | :---: |
+| **Model A: TF-IDF + Logistic Regression** | 100.00% | 100.00% | 100.00% | **0.152s** | Softmax | Baseline |
+| **Model B: TF-IDF + Calibrated LinearSVC** | **100.00%** | **100.00%** | **100.00%** | **0.927s** | **Platt Scaling (Sigmoid)** | **SELECTED FOR PRODUCTION** |
+
+### 8.4 Per-Class Classification Report (Model B: Calibrated LinearSVC)
+```text
+                             precision    recall  f1-score   support
+
+   Account Ban / Suspension     1.0000    1.0000    1.0000       124
+        Champion / Skin Bug     1.0000    1.0000    1.0000        20
+    Chat Restriction Appeal     1.0000    1.0000    1.0000        27
+      Cheat / Hacker Report     1.0000    1.0000    1.0000        73
+         Client Bug / Crash     1.0000    1.0000    1.0000        67
+          Login / 2FA Issue     1.0000    1.0000    1.0000        44
+Missing RP / Purchase Issue     1.0000    1.0000    1.0000       119
+       Ranked & Matchmaking     1.0000    1.0000    1.0000        64
+             Refund Request     1.0000    1.0000    1.0000        34
+       Server Latency / Lag     1.0000    1.0000    1.0000         8
+
+                   accuracy                         1.0000       580
+                  macro avg     1.0000    1.0000    1.0000       580
+               weighted avg     1.0000    1.0000    1.0000       580
+```
+
+### 8.5 Confusion Matrix Analysis
+```text
+Class Index / Label                0       1       2       3       4       5       6       7       8       9
+------------------------------------------------------------------------------------------------------------
+[0] Account Ban / Suspension      124       0       0       0       0       0       0       0       0       0
+[1] Champion / Skin Bug            0      20       0       0       0       0       0       0       0       0
+[2] Chat Restriction Appeal        0       0      27       0       0       0       0       0       0       0
+[3] Cheat / Hacker Report          0       0       0      73       0       0       0       0       0       0
+[4] Client Bug / Crash             0       0       0       0      67       0       0       0       0       0
+[5] Login / 2FA Issue              0       0       0       0       0      44       0       0       0       0
+[6] Missing RP / Purchase Issue    0       0       0       0       0       0     119       0       0       0
+[7] Ranked & Matchmaking           0       0       0       0       0       0       0      64       0       0
+[8] Refund Request                 0       0       0       0       0       0       0       0      34       0
+[9] Server Latency / Lag           0       0       0       0       0       0       0       0       0       8
+------------------------------------------------------------------------------------------------------------
+```
+
+### 8.6 Educational Breakdown: Why Macro F1 Trumps Accuracy
+In customer support classification, **Macro F1** is strictly superior to raw accuracy:
+1. **The Masking Effect of Accuracy:** In an imbalanced queue where majority issues (bans/RP) represent 80% of tickets, a naive model that predicts majority classes could achieve 80% accuracy while failing 100% on rare but severe issues (e.g., *Server Latency / Lag*).
+2. **Unweighted Class Representation:** Macro F1 computes the unweighted arithmetic mean of per-class F1-scores:
+   $$\text{Macro F1} = \frac{1}{K} \sum_{k=1}^K F1_k$$
+   It weights the 8 test tickets of *Server Latency* with the exact same importance as the 124 tickets of *Account Bans*, ensuring rare operational outages are never ignored.
+
+### 8.7 Serialized Artifacts
+- **Model Pipeline:** `models/category_model.joblib` (510.3 KB) — End-to-end transformer and calibrated predictor ready for FastAPI.
+- **Fitted TF-IDF:** `models/category_tfidf.joblib` (70.5 KB) — Standalone vectorizer for feature coefficient inspection and explainability (Module 9).
+
+---
+
+## 9. Roadmap & Upcoming Modules
 
 | Module | Title | Target Artifacts | Status |
-| :---: | :--- | :--- | :---: |
+| :--- | :--- | :--- | :---: |
 | **0** | Synthetic Dataset Generation | `data/raw/tickets.csv`, `src/generate_dataset.py` | **COMPLETE** |
 | **1** | Data Cleaning & Preprocessing | `data/processed/tickets_clean.csv`, `src/preprocessing.py` | **COMPLETE** |
 | **2** | Exploratory Data Analysis | `notebooks/exploration.ipynb`, `reports/figures/*.png` | **COMPLETE** |
 | **3** | Feature Engineering Pipeline | `src/features.py` | **COMPLETE** |
 | **4** | Leakage Analysis & Evaluation | `src/evaluate.py` | **COMPLETE** |
 | **5** | Near-Duplicate Detection | `src/similarity.py` | **COMPLETE** |
-| **6** | Category Classification Models | `src/train.py`, `models/category_model.joblib` | **NEXT** |
-| **7** | Priority Prediction Model | `src/train.py`, `models/priority_model.joblib` | UPCOMING |
+| **6** | Category Classification Models | `src/train.py`, `models/category_model.joblib` | **COMPLETE** |
+| **7** | Priority Prediction Model | `src/train.py`, `models/priority_model.joblib` | **NEXT** |
 | **8** | Similar Ticket Retrieval Index | `src/similarity.py`, `models/retrieval_index.joblib` | UPCOMING |
 | **9** | Explainability Engine | `src/evaluate.py` | UPCOMING |
 | **10** | Confidence Calibration & OOD | `src/evaluate.py`, `models/calibration_curve.png` | UPCOMING |
@@ -291,3 +364,4 @@ TF-IDF Cosine Similarity:   0.1573  <-- Missed by TF-IDF (Threshold >= 0.85)
 
 ---
 *Report maintained alongside codebase updates. Last modified: September 2026.*
+

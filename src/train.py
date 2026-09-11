@@ -116,7 +116,6 @@ def build_category_pipeline(
             C=1.0,
             max_iter=1000,
             random_state=seed,
-            n_jobs=-1,
         )
     elif model_type.lower() == "svm":
         base_svc = LinearSVC(

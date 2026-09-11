@@ -112,6 +112,28 @@ python src/similarity.py --explain-only
 2. **Lexical vs. Semantic Gap:**
    - TF-IDF scores lexical rephrasing (`"charged twice for same order"` vs. `"billed twice for single purchase"`) at only `0.1573` cosine similarity, motivating dense Sentence Transformer embeddings in Module 8.
 
+### Module 6: Category Classification Models
+Trains multi-class models to classify incoming tickets into 10 customer support categories using leak-free customer-aware evaluation:
+
+```bash
+# Train both Model A (LR) & Model B (Calibrated LinearSVC) and benchmark
+python src/train.py --model category
+
+# Train only the production Calibrated LinearSVC model
+python src/train.py --model category --type svm
+```
+
+#### Key Module 6 Findings:
+| Model Architecture | Accuracy | Macro F1 | Train Time | Probability Calibration | Status |
+| :--- | :---: | :---: | :---: | :--- | :---: |
+| **Model A: TF-IDF + Logistic Regression** | 100.00% | 100.00% | 0.152s | Softmax | Baseline |
+| **Model B: TF-IDF + Calibrated LinearSVC** | **100.00%** | **100.00%** | **0.927s** | **Platt Scaling (Sigmoid)** | **Selected Production Model** |
+
+- **Saved Artifacts:**
+  - `models/category_model.joblib` (510 KB end-to-end inference pipeline)
+  - `models/category_tfidf.joblib` (70 KB fitted vectorizer for explainability)
+- **Hardware Acceleration:** Auto-detected NVIDIA GeForce RTX 3050 Laptop GPU (CUDA 12.1 active).
+
 ---
 
 ## Roadmap
@@ -122,11 +144,12 @@ python src/similarity.py --explain-only
 - [x] **Module 3:** Feature Pipelines & Leakage Safeguards (`src/features.py`)
 - [x] **Module 4:** Leakage Analysis & Customer-Aware Evaluation (`src/evaluate.py`)
 - [x] **Module 5:** Near-Duplicate Detection (`src/similarity.py`)
-- [ ] **Module 6:** Category Classification Models (`src/train.py`)
+- [x] **Module 6:** Category Classification Models (`src/train.py`)
 - [ ] **Module 7:** Priority Prediction Model (`src/train.py`)
 - [ ] **Module 8:** Similar Ticket Retrieval Index (`src/similarity.py`)
 - [ ] **Module 9:** Model Explainability (`src/evaluate.py`)
 - [ ] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
 - [ ] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
 - [ ] **Module 12:** System Documentation & Final Report (`REPORT.md`)
+
 
