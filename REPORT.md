@@ -19,7 +19,11 @@
 10. [Module 8: Similar Ticket Retrieval Index & Semantic Search](#10-module-8-similar-ticket-retrieval-index--semantic-search)
 11. [Module 9: Model Explainability Engine & Feature Attribution](#11-module-9-model-explainability-engine--feature-attribution)
 12. [Module 10: Confidence Calibration & Out-of-Distribution Detection](#12-module-10-confidence-calibration--out-of-distribution-detection)
-13. [Roadmap & Upcoming Modules](#13-roadmap--upcoming-modules)
+13. [Module 11: FastAPI REST Inference Service](#13-fastapi-rest-inference-service-module-11)
+14. [System Limitations & Failure Modes](#14-system-limitations--failure-modes)
+15. [Future Improvements & Production Roadmap (v2 Vision)](#15-future-improvements--production-roadmap-v2-vision)
+16. [Project Conclusion & Learning Checkpoints](#16-project-conclusion--learning-checkpoints)
+17. [Final Project Status & Deliverables Summary](#17-final-project-status--deliverables-summary)
 
 ---
 
@@ -766,25 +770,107 @@ FastAPI automatically compiles and exposes interactive API documentation:
 
 ---
 
-## 14. Roadmap & Upcoming Modules
+## 14. System Limitations & Failure Modes
 
-| Module | Title | Target Artifacts | Status |
+While the system delivers high accuracy, real-time latency, calibrated confidence, and interpretability, any production triage deployment must account for architectural boundaries and potential failure modes:
+
+### 14.1 Priority Prediction Ceiling (Weak Text-to-Urgency Correlation)
+- **The Empirical Ceiling:** On the honest, customer-aware test cohort, the GPU-accelerated XGBoost priority model achieved **37.59% accuracy** and **35.55% Macro F1**.
+- **Root Cause Analysis:** Unlike category classification (where lexical unigrams like `"charged"`, `"ban"`, or `"crash"` provide strong class separation), player complaint text correlates weakly with operational urgency. A player expressing extreme frustration about a minor cosmetic glitch may write passionately with exclamation marks, while an enterprise-critical billing failure may be stated plainly (*"duplicate charge on card"*).
+- **The Post-Outcome Trap:** In Module 4, we proved that including `resolution_time` and `resolved` artificially inflated priority Macro F1 by **+15.90%**. Without these post-outcome variables, priority cannot be reliably derived from text alone. In real Riot Games operations, priority is heavily driven by real-time infrastructure state (e.g. server outage flags, VIP player status, active ranked seasons), which are external to the complaint text.
+
+### 14.2 Absence of Live Multimodal Game Logs
+- **Log Deficit:** In production, troubleshooting technical crashes (*"fatal directx error"*, *"game freezes in champion select"*) requires Riot Vanguard kernel logs, DirectX DxDiag exports, client trace files, and GPU driver telemetry.
+- **Limitation:** The current system operates solely on unstructured natural language text. When players submit vague complaints (*"my game is broken"*), the model cannot cross-reference client crash dumps or server error codes to verify hardware compatibility issues.
+
+### 14.3 Static Retrieval Index vs. Dynamic Streaming Vector Ingestion
+- **Current Architecture:** The semantic retrieval index stores 2,867 dense 384-dimensional vectors in a serialized `.joblib` dictionary loaded in RAM.
+- **Operational Limitation:** Incoming resolved tickets cannot be appended in real-time without re-serializing the index. In a production setting processing millions of player interactions daily, an in-memory NumPy matrix would exceed RAM capacity and require continuous rebuilds.
+
+### 14.4 Monolingual English Assumption
+- **Distribution Scope:** The current synthetic dataset and Sentence Transformer backbone (`all-MiniLM-L6-v2`) are tailored for English text.
+- **Failure Mode:** Riot Games operates global servers across Korea, Japan, Europe (EUNE/EUW), Latin America, and Brazil. Submissions in Korean, Portuguese, German, or multilingual gaming slang (*"gg ff15"*, *"jungle diff"*, *"smurf"*) may suffer degraded category prediction or trigger false OOD uncertainty flags.
+
+### 14.5 Concept Drift & Offline Calibration
+- **Calibration Stability:** The Platt scaling parameters ($A$ and $B$) were fitted on a static snapshot of support data.
+- **Vulnerability:** When a new champion is released, a game balance patch goes live, or an anti-cheat banwave occurs, support ticket topic distributions shift rapidly. If the data distribution drifts, post-hoc calibration curves may become stale, requiring re-calibration audits.
+
+---
+
+## 15. Future Improvements & Production Roadmap (v2 Vision)
+
+To transition from this prototype into a hyperscale support automation engine, the following architectural upgrades are recommended for Version 2.0:
+
+### 15.1 Real-Time Distributed Vector Database (Qdrant / Milvus)
+- Replace static `.joblib` vector dictionaries with an enterprise-grade vector database (such as **Qdrant**, **Milvus**, or **pgvector**).
+- Utilize **Hierarchical Navigable Small World (HNSW)** graph indexing with scalar quantization to achieve sub-5ms cosine retrieval across 50,000,000+ historical tickets.
+- Enable live streaming upserts so that newly closed tickets immediately enrich the semantic knowledge base.
+
+### 15.2 Multimodal Diagnostic Attachment Parsing
+- Ingest and parse player diagnostic attachments alongside text:
+  - **DxDiag.txt / SystemInfo:** Automatically extract GPU model, driver version, RAM, and Windows build to cross-reference known game engine bugs.
+  - **Vanguard Logs:** Scan for third-party driver conflicts or hook injections.
+  - **Screenshot OCR:** Use lightweight vision models (e.g. TrOCR or vision LLMs) to extract error codes and dialog box messages from uploaded crash screenshots.
+
+### 15.3 Agentic LLM-Powered Zero-Shot Response Drafting
+- Connect a fine-tuned open-weights LLM (such as Llama-3-8B-Instruct or Mistral-7B) to the triage pipeline.
+- Using Retrieval-Augmented Generation (RAG), pass the predicted category, similar resolved historical tickets, and player account status into the prompt.
+- Generate pre-filled, personalized draft responses for human support agents, reducing ticket resolution time from hours to seconds while preserving human review.
+
+### 15.4 Cross-Lingual Pretrained Encoders
+- Replace the English-focused Sentence Transformer with multilingual foundation models such as **multilingual-e5-base** or **XLM-RoBERTa**.
+- Enable seamless cross-lingual retrieval (e.g. matching a Korean bug report with an English developer patch note).
+
+### 15.5 Continuous Drift Monitoring & Human-in-the-Loop Active Learning
+- Implement **Evidently AI** or **Prometheus** exporters in the FastAPI service to monitor embedding drift, vocabulary shifts, and confidence distribution decay in real time.
+- Establish an active learning loop where tickets flagged with `uncertain=True` by the OOD guardrail are prioritized for human agent annotation and automatically fed into the next training cohort.
+
+---
+
+## 16. Project Conclusion & Learning Checkpoints
+
+The **Riot Games Smart Customer Support Intelligence System** demonstrates an end-to-end, leak-free, mathematically verified machine learning engineering lifecycle. Over 12 distinct milestones, the project transitioned from raw procedural data generation to a high-throughput, GPU-accelerated REST inference service.
+
+### Conceptual Learning Checkpoints Matrix
+
+| Milestone | Core Concept Mastered | Practical Implementation & Empirical Proof |
+| :--- | :--- | :--- |
+| **Module 1** | **Documentation over Silent Deletion** | Audited and documented all 126 missing texts and 45 corrupt timestamps; capped numeric outliers rather than dropping to preserve sample representation. |
+| **Module 2** | **Visual Imbalance & Confusion Diagnosis** | Diagnosed long-tail class imbalance (Account Ban at 23.2% vs. Server Lag at 1.0%); established Macro F1 as the primary guiding evaluation metric. |
+| **Module 3** | **Train-Only Transformer Fitting Rule** | Enforced strict `.fit_transform()` on training folds and `.transform()` on test/eval splits inside `ColumnTransformer` to prevent distribution leakage. |
+| **Module 4** | **Target Leakage Mechanics** | Proved +15.90% Macro F1 artificial inflation when post-outcome features (`resolution_time`, `resolved`) were included; established honest customer-aware splitting. |
+| **Module 5** | **Contamination via Near-Duplicates** | Identified 56,872 near-duplicate pairs ($\ge 0.85$ cosine similarity); proved lexical TF-IDF failure on paraphrased text (0.1573 similarity). |
+| **Module 6** | **Macro F1 vs. Accuracy on Imbalanced Data** | Trained LinearSVC with Platt scaling; achieved 100% Macro F1 on clean category separation with balanced sample weighting. |
+| **Module 7** | **Gradient Boosting on Heterogeneous Features** | Combined 50 latent semantic text components with one-hot categorical and scaled metadata; trained GPU XGBoost booster. |
+| **Module 8** | **Dense Embeddings vs. Lexical Overlap** | Encoded 2,867 complaints with `all-MiniLM-L6-v2` on NVIDIA RTX 3050 GPU in 1.23s; achieved 0.9363 cosine similarity on paraphrased queries. |
+| **Module 9** | **Model Coefficients vs. Causal Attribution** | Extracted linear hyperplanes across 3 Platt scaling folds; computed local contributions ($x_j \cdot \bar{w}_j$) in $< 0.1\text{ ms}$ for real-time explanations. |
+| **Module 10** | **Confidence vs. Calibrated Probability** | Reduced Brier score loss by 99.94% using Platt scaling; established an OOD rejection boundary at $\tau = 0.50$ for off-domain queries. |
+| **Module 11** | **Decoupled Training vs. REST Inference** | Built FastAPI service with lifespan context manager; pre-warmed models in `app.state`; achieved sub-30ms multi-task triage latency. |
+| **Module 12** | **Reproducibility & Pinned Environments** | Frozen dependencies in `requirements.txt`; documented system limitations, failure modes, and v2 architectural roadmap. |
+
+---
+
+## 17. Final Project Status & Deliverables Summary
+
+All 12 modules defined in `PROJECT_GUIDE.md` are completely implemented, verified, and pushed to `main`:
+
+| Module | Title | Primary Artifacts | Status |
 | :--- | :--- | :--- | :---: |
 | **0** | Synthetic Dataset Generation | `data/raw/tickets.csv`, `src/generate_dataset.py` | **COMPLETE** |
 | **1** | Data Cleaning & Preprocessing | `data/processed/tickets_clean.csv`, `src/preprocessing.py` | **COMPLETE** |
-| **2** | Exploratory Data Analysis | `notebooks/exploration.ipynb`, `reports/figures/*.png` | **COMPLETE** |
-| **3** | Feature Engineering Pipeline | `src/features.py` | **COMPLETE** |
-| **4** | Leakage Analysis & Evaluation | `src/evaluate.py` | **COMPLETE** |
-| **5** | Near-Duplicate Detection | `src/similarity.py` | **COMPLETE** |
+| **2** | Exploratory Data Analysis | `notebooks/exploration.ipynb`, `reports/figures/*.png` (10 plots) | **COMPLETE** |
+| **3** | Feature Engineering Pipeline | `src/features.py` (`ColumnTransformer`, `StandardScaler`, `OHE`) | **COMPLETE** |
+| **4** | Leakage Analysis & Evaluation | `src/evaluate.py` (proven +15.90% F1 leakage, customer split) | **COMPLETE** |
+| **5** | Near-Duplicate Detection | `src/similarity.py` (56,872 pairs, TF-IDF lexical audit) | **COMPLETE** |
 | **6** | Category Classification Models | `src/train.py`, `models/category_model.joblib` | **COMPLETE** |
-| **7** | Priority Prediction Model | `src/train.py`, `models/priority_model.joblib` | **COMPLETE** |
-| **8** | Similar Ticket Retrieval Index | `src/similarity.py`, `models/retrieval_index.joblib` | **COMPLETE** |
-| **9** | Explainability Engine | `src/evaluate.py` | **COMPLETE** |
-| **10** | Confidence Calibration & OOD | `src/evaluate.py`, `models/calibration_curve.png` | **COMPLETE** |
-| **11** | FastAPI REST Inference Service | `api/app.py`, `tests/test_api.py` | **COMPLETE** |
-| **12** | Project Wrap-up & Documentation | `README.md`, `REPORT.md` (final polish) | **NEXT** |
+| **7** | Priority Prediction Model | `src/train.py`, `models/priority_model.joblib` (GPU XGBoost) | **COMPLETE** |
+| **8** | Similar Ticket Retrieval Index | `src/similarity.py`, `models/retrieval_index.joblib` (GPU MiniLM) | **COMPLETE** |
+| **9** | Explainability Engine | `src/evaluate.py` (linear hyperplane feature contributions) | **COMPLETE** |
+| **10** | Confidence Calibration & OOD | `src/evaluate.py`, `models/calibration_curve.png` (99.94% gain) | **COMPLETE** |
+| **11** | FastAPI REST Inference Service | `api/app.py`, `tests/test_api.py` (sub-30ms multi-task triage) | **COMPLETE** |
+| **12** | System Documentation & Wrap-Up | `README.md`, `REPORT.md`, `requirements.txt` | **COMPLETE** |
 
 ---
-*Report maintained alongside codebase updates. Last modified: September 2026.*
+*Report maintained alongside codebase updates. Project finalized: September 2026.*
 
 

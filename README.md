@@ -2,7 +2,7 @@
 
 AI/ML-powered ticket classification, prioritization, similarity search, and explainable support intelligence — built on a synthetic Riot Games support ticket dataset.
 
-> **Status:** Modules 0 through 10 completed. See `PROJECT_GUIDE.md` for the comprehensive roadmap.
+> **Status:** All 12 Modules Completed (Production Ready). See [`REPORT.md`](REPORT.md) for full empirical benchmarks and architectural analysis.
 
 ---
 
@@ -286,6 +286,19 @@ curl -X POST "http://localhost:8000/predict" \
 
 ---
 
+### Module 12: Documentation, Analysis & System Wrap-Up
+The complete end-to-end system analysis is compiled in [`REPORT.md`](REPORT.md) (~15 pages, 16 comprehensive sections) covering:
+1. Complete system architecture and ground truth formulation.
+2. Leakage analysis, empirical proof (+15.90% F1 inflation), and customer-aware splitting.
+3. Near-duplicate contamination (56,872 pairs) and TF-IDF vs. Dense Transformer failure modes.
+4. Model evaluation: LinearSVC vs. Logistic Regression, GPU XGBoost priority prediction.
+5. Model explainability via linear hyperplane extraction ($x_j \cdot \bar{w}_j$) in $< 0.1\text{ ms}$.
+6. Probability calibration (99.94% Brier score error reduction) and OOD guardrails.
+7. System limitations (monolingual English, static vector index, lack of client crash dump logs).
+8. Future architectural roadmap (v2 with Qdrant vector DB, LLM response drafting, and multimodal attachments).
+
+---
+
 ## Roadmap
 
 - [x] **Module 0:** Synthetic Dataset Generation (`src/generate_dataset.py`)
@@ -300,7 +313,15 @@ curl -X POST "http://localhost:8000/predict" \
 - [x] **Module 9:** Model Explainability (`src/evaluate.py`)
 - [x] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
 - [x] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
-- [ ] **Module 12:** System Documentation & Final Report (`REPORT.md`)
+- [x] **Module 12:** System Documentation & Final Report (`REPORT.md`, `requirements.txt`)
+
+---
+
+## License & Attribution
+
+- **License:** MIT License. Free for educational, research, and commercial demonstration use.
+- **Dataset Attribution:** All data in `data/raw/tickets.csv` is completely synthetic, generated procedurally via `src/generate_dataset.py`. It does not contain any real player personal identifiable information (PII) or proprietary internal data from Riot Games Inc.
+- **Trademark Disclaimer:** *League of Legends*, *Valorant*, *Teamfight Tactics*, *Wild Rift*, and *Legends of Runeterra* are registered trademarks of Riot Games, Inc. This project is an independent educational demonstration and is not endorsed by or affiliated with Riot Games.
 
 
 
