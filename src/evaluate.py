@@ -1,10 +1,9 @@
 """
 src/evaluate.py
 ---------------
-Module 4: Leakage Analysis & Evaluation Strategy.
+Evaluation Methodologies (Module 4) & Model Explainability Engine (Module 9).
 
-Implements rigorous evaluation methodologies to prevent data leakage and benchmark
-model generalization:
+Features:
 1. Leakage Experiment: Demonstrates artificial score inflation when post-outcome
    features ('resolution_time', 'resolved') are improperly included in training.
 2. Split Strategies:
@@ -15,17 +14,30 @@ model generalization:
    (the true, honest generalization benchmark).
 4. Diagnostic Reporting: Outputs multi-class classification reports, macro F1,
    and formatted text confusion matrices.
+5. Model Explainability (Module 9):
+   - Extracts linear decision hyperplanes from CalibratedClassifierCV(LinearSVC).
+   - Computes local active feature contributions (x_j * w_j) for words in player tickets.
+   - Generates human-readable explanations formatted for API serving.
+   - Documents explainability limitations (correlation vs causation, unigrams vs SHAP).
 
 Usage:
+    # Module 4: Leakage & Split Evaluation
     python src/evaluate.py
     python src/evaluate.py --leakage-only
     python src/evaluate.py --compare-splits
+
+    # Module 9: Model Explainability Demonstration & Queries
+    python src/evaluate.py --demo-explain
+    python src/evaluate.py --explain "I was charged twice for the same RP bundle"
+    python src/evaluate.py --document-explain-limitations
 """
 
 import argparse
 import sys
 from pathlib import Path
 from typing import Any
+
+import joblib
 
 import numpy as np
 import pandas as pd
@@ -453,12 +465,274 @@ def print_evaluation_report(
     }
 
 
-# ---------------------------------------------------------------------------
-# 5. CLI ENTRYPOINT & SELF-VERIFICATION
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# 5. CATEGORY EXPLAINABILITY ENGINE (MODULE 9)
+# ===========================================================================
+
+def explain_category_prediction(
+    text: str,
+    pipeline: Any = None,
+    top_n: int = 10,
+    product: str = "League of Legends",
+    customer_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Generate feature attributions explaining why the category model classified a ticket.
+
+    Extracts class coefficients from the LinearSVC pipeline (averaged across Platt scaling
+    calibration folds) and computes input-specific contributions for words/bigrams present
+    in the complaint.
+
+    Parameters:
+        text: Raw player complaint string.
+        pipeline: Trained category pipeline (default: loaded from models/category_model.joblib).
+        top_n: Number of top features to return.
+        product: Game title for the ticket (default: "League of Legends").
+        customer_metadata: Optional dict with keys: previous_tickets, hour_of_day, day_of_week, month.
+
+    Returns:
+        dict format:
+        {
+            "predicted_category": str,
+            "confidence": float,
+            "top_features": [
+                {"feature": str, "weight": float, "contribution": float},
+                ...
+            ]
+        }
+    """
+    if pipeline is None:
+        model_path = REPO_ROOT / "models" / "category_model.joblib"
+        if not model_path.exists():
+            raise FileNotFoundError(
+                f"Category model not found at {model_path}. "
+                "Please run 'python src/train.py --model category' first."
+            )
+        pipeline = joblib.load(model_path)
+
+    meta = customer_metadata or {}
+    sample_df = pd.DataFrame([{
+        "ticket_text": text.strip() if text else "",
+        "product": product,
+        "previous_tickets": meta.get("previous_tickets", 0),
+        "hour_of_day": meta.get("hour_of_day", 12),
+        "day_of_week": meta.get("day_of_week", 2),
+        "month": meta.get("month", 6),
+    }])
+
+    # Predict category and confidence
+    pred = pipeline.predict(sample_df)[0]
+    predicted_category = str(pred)
+
+    clf = pipeline.named_steps["clf"]
+    features_step = pipeline.named_steps["features"]
+    feature_names = features_step.get_feature_names_out()
+
+    classes = list(clf.classes_)
+    pred_idx = classes.index(predicted_category)
+
+    if hasattr(pipeline, "predict_proba"):
+        probas = pipeline.predict_proba(sample_df)[0]
+        confidence = float(probas[pred_idx])
+    else:
+        confidence = 1.0
+
+    # Extract linear coefficients across calibration folds
+    if hasattr(clf, "calibrated_classifiers_"):
+        coef_list = [cc.estimator.coef_ for cc in clf.calibrated_classifiers_]
+        avg_coefs = np.mean(coef_list, axis=0)  # Shape: (n_classes, n_features)
+    elif hasattr(clf, "coef_"):
+        avg_coefs = clf.coef_
+    else:
+        raise ValueError(f"Classifier {type(clf)} does not expose linear coefficients.")
+
+    class_weights = avg_coefs[pred_idx]  # Shape: (n_features,)
+
+    # Transform input to identify active features (x_j)
+    x_vec = features_step.transform(sample_df)
+    active_indices = set(x_vec.nonzero()[1])
+
+    def clean_feature_name(raw_name: str) -> str:
+        return (
+            raw_name.replace("text__", "")
+            .replace("cat__product_", "Product: ")
+            .replace("num__", "")
+        )
+
+    # 1. Collect features active in the input text with positive class weights
+    active_features: list[dict[str, Any]] = []
+    for idx in active_indices:
+        w = float(class_weights[idx])
+        val = float(x_vec[0, idx])
+        contrib = val * w
+        if w > 0 and contrib > 0:
+            active_features.append({
+                "feature": clean_feature_name(feature_names[idx]),
+                "weight": round(w, 4),
+                "contribution": round(contrib, 4),
+            })
+    # Sort active features by local contribution descending
+    active_features.sort(key=lambda item: item["contribution"], reverse=True)
+
+    # 2. If fewer active features than top_n, supplement with global class salient words
+    if len(active_features) < top_n:
+        sorted_global_indices = np.argsort(-class_weights)
+        seen_names = {item["feature"] for item in active_features}
+        for g_idx in sorted_global_indices:
+            w = float(class_weights[g_idx])
+            if w <= 0:
+                break
+            feat_name = clean_feature_name(feature_names[g_idx])
+            if feat_name not in seen_names:
+                active_features.append({
+                    "feature": feat_name,
+                    "weight": round(w, 4),
+                    "contribution": 0.0,
+                })
+                seen_names.add(feat_name)
+                if len(active_features) >= top_n:
+                    break
+
+    top_features = active_features[:top_n]
+
+    return {
+        "predicted_category": predicted_category,
+        "confidence": round(confidence, 4),
+        "top_features": top_features,
+    }
+
+
+def format_explanation(explanation_dict: dict[str, Any]) -> str:
+    """
+    Format explanation dictionary into a clean, human-readable string.
+    """
+    category = explanation_dict.get("predicted_category", "Unknown")
+    confidence = explanation_dict.get("confidence", 0.0)
+    top_features = explanation_dict.get("top_features", [])
+
+    lines = [
+        f"Predicted Category: {category} (Confidence: {confidence * 100:.1f}%)",
+        "Key Contributing Words & Signals:",
+    ]
+    for idx, f in enumerate(top_features, start=1):
+        feat_name = f["feature"]
+        weight = f["weight"]
+        contrib = f.get("contribution", 0.0)
+        if contrib > 0:
+            lines.append(f"  {idx:>2}. \"{feat_name}\" -> weight: {weight:+.4f} (local contribution: {contrib:+.4f})")
+        else:
+            lines.append(f"  {idx:>2}. \"{feat_name}\" -> class weight: {weight:+.4f}")
+    return "\n".join(lines)
+
+
+def demonstrate_explainability(pipeline: Any = None, top_n: int = 5) -> list[dict[str, Any]]:
+    """
+    Run explainability on 4 diverse support complaints and print formatted outputs.
+    """
+    if pipeline is None:
+        model_path = REPO_ROOT / "models" / "category_model.joblib"
+        if not model_path.exists():
+            raise FileNotFoundError(
+                f"Category model not found at {model_path}. "
+                "Please run 'python src/train.py --model category' first."
+            )
+        pipeline = joblib.load(model_path)
+
+    sample_complaints = [
+        (
+            "Account Ban Appeal",
+            "I received a 14-day suspension for allegedly using scripts. I have never used an unauthorized program.",
+            "League of Legends",
+        ),
+        (
+            "Missing RP / Purchase Issue",
+            "I purchased 1350 RP but my credit card was charged twice and no coins appeared in my account.",
+            "League of Legends",
+        ),
+        (
+            "Client Bug / Crash Report",
+            "Game freezes and crashes during champion select every time with a fatal directx error.",
+            "Valorant",
+        ),
+        (
+            "Server Latency / Lag",
+            "Constant high ping and severe packet loss every evening making ranked games unplayable.",
+            "League of Legends",
+        ),
+    ]
+
+    print("\n" + "=" * 90)
+    print(" " * 26 + "DEMONSTRATION: MODEL EXPLAINABILITY")
+    print("=" * 90)
+
+    results = []
+    for title, text, prod in sample_complaints:
+        print(f"\n[{title}] (Product: {prod})")
+        print(f"Complaint: \"{text}\"")
+        print("-" * 90)
+        explanation = explain_category_prediction(text, pipeline=pipeline, top_n=top_n, product=prod)
+        print(format_explanation(explanation))
+        print("-" * 90)
+        results.append(explanation)
+
+    return results
+
+
+def document_explainability_limitations() -> str:
+    """
+    Return and print a comprehensive written explanation of linear model explainability limitations.
+    """
+    limitations = """
+========================================================================================
+                      MODEL EXPLAINABILITY: METHODOLOGICAL LIMITATIONS
+========================================================================================
+
+1. Correlation vs. Causation:
+   - Linear coefficients reflect statistical correlation within the training dataset,
+     NOT causal reasoning or true linguistic understanding.
+   - For example, if the word 'ticket' appears frequently in purchase complaints in the
+     synthetic training set, the model may assign it high positive weight, even though
+     'ticket' is an operational artifact, not a causal indicator of a billing problem.
+
+2. Unigrams and Bigrams Limitations:
+   - TF-IDF with (1, 2) n-grams treats features as independent tokens or adjacent pairs.
+   - It is completely blind to:
+     * Long-range dependencies and sentence grammar.
+     * Sarcasm or irony (e.g. 'Great job Riot, the client crashed again!').
+     * Complex negations (e.g. 'I was NOT banned for toxicity, my brother was').
+
+3. Explanation Applies Only to the Final Linear Layer:
+   - The linear coefficients w_j explain how the model scores coordinates AFTER the
+     multi-step feature pipeline (TF-IDF sublinear scaling, IDF weighting, OHE, standard scaling).
+   - They do not explain the full nonlinear end-to-end data transformation.
+
+4. Spurious Correlations and Class Imbalances:
+   - In classes with small support (e.g. Server Latency with 28 samples), unique customer
+     writing habits (e.g. specific player names, timestamps, ISPs) can become spurious
+     high-weight features that overfit to those few samples.
+
+5. Global Class Weights vs. Local SHAP Attribution:
+   - LinearSVC decision hyperplanes (w_c) are inherently GLOBAL per class.
+   - While instance-level weighting (x_j * w_j) pinpoints which words were active in a
+     specific complaint, it treats each feature additively without interaction effects.
+   - More rigorous game-theoretic frameworks (such as SHAP LinearExplainer or TreeExplainer)
+     measure the marginal contribution of each feature across all possible feature subsets,
+     providing true local attribution against a baseline background distribution.
+========================================================================================
+"""
+    print(limitations)
+    return limitations
+
+
+# ===========================================================================
+# 6. CLI ENTRYPOINT & SELF-VERIFICATION
+# ===========================================================================
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Module 4: Evaluation Strategy & Leakage Analysis")
+    parser = argparse.ArgumentParser(
+        description="Module 4 (Evaluation & Leakage) and Module 9 (Model Explainability)"
+    )
+    # Module 4 arguments
     parser.add_argument(
         "--input",
         type=str,
@@ -482,8 +756,64 @@ def main() -> None:
         choices=["category", "priority"],
         help="Target column for split comparison ('category' or 'priority')",
     )
+    # Module 9 arguments
+    parser.add_argument(
+        "--demo-explain",
+        action="store_true",
+        help="Run explainability demonstration across diverse sample complaints",
+    )
+    parser.add_argument(
+        "--explain",
+        type=str,
+        default=None,
+        help="Explain category prediction for an ad-hoc customer complaint text",
+    )
+    parser.add_argument(
+        "--product",
+        type=str,
+        default="League of Legends",
+        help="Product name for ad-hoc complaint explanation (default: 'League of Legends')",
+    )
+    parser.add_argument(
+        "--top-n",
+        type=int,
+        default=5,
+        help="Number of top contributing features to return (default: 5)",
+    )
+    parser.add_argument(
+        "--document-explain-limitations",
+        action="store_true",
+        help="Print written explanation of linear model explainability limitations",
+    )
+
     args = parser.parse_args()
 
+    # 1. Explainability limitations
+    if args.document_explain_limitations:
+        document_explainability_limitations()
+        return
+
+    # 2. Ad-hoc query explanation
+    if args.explain:
+        explanation = explain_category_prediction(
+            text=args.explain,
+            top_n=args.top_n,
+            product=args.product,
+        )
+        print("\n" + "=" * 80)
+        print(f"Complaint: \"{args.explain}\" (Product: {args.product})")
+        print("-" * 80)
+        print(format_explanation(explanation))
+        print("=" * 80 + "\n")
+        return
+
+    # 3. Explainability demonstration
+    if args.demo_explain:
+        demonstrate_explainability(top_n=args.top_n)
+        document_explainability_limitations()
+        return
+
+    # Default Module 4 workflow
     csv_path = Path(args.input)
     if not csv_path.exists():
         print(f"[Error] Dataset not found at: {csv_path.resolve()}")
