@@ -4,6 +4,9 @@ AI/ML-powered ticket classification, prioritization, similarity search, and expl
 
 > **Status:** Production Ready. See [`REPORT.md`](REPORT.md) for full empirical benchmarks and architectural analysis.
 
+![Riot Games Support Intelligence Dashboard](reports/figures/13_ui_prediction_summary.png)
+*Figure: Real-time multi-task triage dashboard featuring Platt-calibrated classification, XGBoost priority prediction, feature attribution, and dense semantic retrieval.*
+
 ---
 
 ## Setup
