@@ -2,28 +2,26 @@
 # Comprehensive Technical Analysis & Progress Report
 
 > **Authors:** Saad Asif  
-> **Status:** Living Document — Updated continuously across Module Milestones  
+> **Status:** Production Ready — Comprehensive System Evaluation & Architecture Record  
 
 ---
 
 ## Table of Contents
 1. [Executive Summary & System Architecture](#1-executive-summary-system-architecture)
-2. [Module 0: Dataset Generation & Ground Truth Formulation](#2-module-0-dataset-generation-ground-truth-formulation)
-3. [Module 1: Data Cleaning & Preprocessing Audit](#3-module-1-data-cleaning-preprocessing-audit)
-4. [Module 2: Exploratory Data Analysis & Empirical Insights](#4-module-2-exploratory-data-analysis-empirical-insights)
-5. [Module 3: Feature Engineering & Preprocessing Architecture](#5-module-3-feature-engineering-preprocessing-architecture)
-6. [Module 4: Leakage Analysis & Evaluation Strategy](#6-module-4-leakage-analysis-evaluation-strategy)
-7. [Module 5: Near-Duplicate Detection & Contamination Analysis](#7-module-5-near-duplicate-detection-contamination-analysis)
-8. [Module 6: Category Classification Models & Probability Calibration](#8-module-6-category-classification-models-probability-calibration)
-9. [Module 7: Priority Prediction Models & Feature Fusion](#9-module-7-priority-prediction-models-feature-fusion)
-10. [Module 8: Similar Ticket Retrieval Index & Semantic Search](#10-module-8-similar-ticket-retrieval-index-semantic-search)
-11. [Module 9: Model Explainability Engine & Feature Attribution](#11-module-9-model-explainability-engine-feature-attribution)
-12. [Module 10: Confidence Calibration & Out-of-Distribution (OOD) Detection](#12-module-10-confidence-calibration-out-of-distribution-ood-detection)
-13. [Module 11: FastAPI REST Inference Service](#13-fastapi-rest-inference-service-module-11)
+2. [Dataset Generation & Ground Truth Formulation](#2-dataset-generation-ground-truth-formulation)
+3. [Data Cleaning & Preprocessing Audit](#3-data-cleaning-preprocessing-audit)
+4. [Exploratory Data Analysis & Empirical Insights](#4-exploratory-data-analysis-empirical-insights)
+5. [Feature Engineering & Preprocessing Architecture](#5-feature-engineering-preprocessing-architecture)
+6. [Leakage Analysis & Evaluation Strategy](#6-leakage-analysis-evaluation-strategy)
+7. [Near-Duplicate Detection & Contamination Analysis](#7-near-duplicate-detection-contamination-analysis)
+8. [Category Classification Models & Probability Calibration](#8-category-classification-models-probability-calibration)
+9. [Priority Prediction Models & Feature Fusion](#9-priority-prediction-models-feature-fusion)
+10. [Similar Ticket Retrieval Index & Semantic Search](#10-similar-ticket-retrieval-index-semantic-search)
+11. [Model Explainability Engine & Feature Attribution](#11-model-explainability-engine-feature-attribution)
+12. [Confidence Calibration & Out-of-Distribution (OOD) Detection](#12-confidence-calibration-out-of-distribution-ood-detection)
+13. [FastAPI REST Inference Service](#13-fastapi-rest-inference-service)
 14. [System Limitations & Failure Modes](#14-system-limitations-failure-modes)
-15. [Future Improvements & Production Roadmap (v2 Vision)](#15-future-improvements-production-roadmap-v2-vision)
-16. [Project Conclusion & Learning Checkpoints](#16-project-conclusion-learning-checkpoints)
-17. [Final Project Status & Deliverables Summary](#17-final-project-status-deliverables-summary)
+15. [Project Conclusion & Learning Checkpoints](#15-project-conclusion-learning-checkpoints)
 
 ---
 
@@ -40,31 +38,31 @@ This report provides an in-depth technical audit, empirical evaluation, and arch
                                                  v
 +--------------------------------------------------------------------------------------------------+
 |                                   DATA CLEANING & FEATURE EXTRACTION                             |
-|  - Text normalization & cleaning (Module 1)                                                      |
-|  - Temporal feature extraction: hour_of_day, day_of_week, month (Module 1)                        |
-|  - ColumnTransformer: TF-IDF (15k) + OneHotEncoder + StandardScaler (Module 3)                   |
+|  - Text normalization & NLP cleaning pipeline                                                    |
+|  - Temporal feature extraction: hour_of_day, day_of_week, month                                  |
+|  - ColumnTransformer: TF-IDF (15k) + OneHotEncoder + StandardScaler                              |
 +--------------------------------------------------------------------------------------------------+
          |                                       |                                       |
          v                                       v                                       v
 +-----------------------+               +-----------------------+               +-----------------------+
 |  CATEGORY CLASSIFIER  |               |  PRIORITY PREDICTION  |               |   SEMANTIC RETRIEVAL  |
-|  LinearSVC (Sigmoid   |               |  LightGBM / Boosting  |               |  Sentence-Transformer |
-|  Calibration)         |               |  (3 Urgency Levels)   |               |  Top-5 Past Tickets   |
-|  [Module 6, 9, 10]    |               |  [Module 7]           |               |  [Module 8]           |
+|  LinearSVC (Sigmoid   |               |  GPU XGBoost          |               |  Sentence-Transformer |
+|  Calibration cv=5)    |               |  (3 Urgency Levels)   |               |  Top-5 Past Tickets   |
+|  [Calibrated/Explained|               |  [GPU Accelerated]    |               |  [CUDA MiniLM Embed]  |
 +-----------------------+               +-----------------------+               +-----------------------+
          |                                       |                                       |
          +---------------------------------------+---------------------------------------+
                                                  |
                                                  v
 +--------------------------------------------------------------------------------------------------+
-|                                  FASTAPI REST SERVICE (Module 11)                                |
+|                                       FASTAPI REST SERVICE                                       |
 |           Endpoints: /predict (with confidence, calibration note, explanation, retrieval)        |
 +--------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 2. Module 0: Dataset Generation & Ground Truth Formulation
+## 2. Dataset Generation & Ground Truth Formulation
 
 ### 2.1 Synthetic Data Generation Strategy
 To provide realistic operational telemetry without compromising private player data, a domain-accurate synthetic data generator was implemented in [`src/generate_dataset.py`](src/generate_dataset.py). The generator synthesizes realistic distributions based on real-world support ticket mechanics:
@@ -86,9 +84,9 @@ To replicate real-world data collection failures, intentional data quality defec
 
 ---
 
-## 3. Module 1: Data Cleaning & Preprocessing Audit
+## 3. Data Cleaning & Preprocessing Audit
 
-Implemented in [`src/preprocessing.py`](src/preprocessing.py), this module audits anomalies, repairs corrupt records, normalizes NLP text, and extracts temporal signals.
+Implemented in [`src/preprocessing.py`](src/preprocessing.py), this component audits anomalies, repairs corrupt records, normalizes NLP text, and extracts temporal signals.
 
 ### 3.1 Data Quality Audit Findings
 
@@ -109,7 +107,7 @@ Implemented in [`src/preprocessing.py`](src/preprocessing.py), this module audit
 
 ---
 
-## 4. Module 2: Exploratory Data Analysis & Empirical Insights
+## 4. Exploratory Data Analysis & Empirical Insights
 
 Implemented and executed in [`notebooks/exploration.ipynb`](notebooks/exploration.ipynb), 10 comprehensive analytical visualizations were conducted to diagnose class representation, player behavior, text length distributions, and operational temporal spikes.
 
@@ -183,9 +181,9 @@ Implemented and executed in [`notebooks/exploration.ipynb`](notebooks/exploratio
 
 ---
 
-## 5. Module 3: Feature Engineering & Preprocessing Architecture
+## 5. Feature Engineering & Preprocessing Architecture
 
-Implemented in [`src/features.py`](src/features.py), this module establishes modular, leak-free feature transformation pipelines using scikit-learn.
+Implemented in [`src/features.py`](src/features.py), this component establishes modular, leak-free feature transformation pipelines using scikit-learn.
 
 ### 5.1 Pipeline Structure
 ```python
@@ -197,7 +195,7 @@ build_full_pipeline(max_tfidf_features=15000) -> ColumnTransformer:
 
 ### 5.2 The "Fit/Transform vs. Transform-Only" Rule
 To ensure zero data leakage from validation/test sets:
-- **Rule:** Feature transformers are instantiated but **never fitted upon module import or global scope**.
+- **Rule:** Feature transformers are instantiated but **never fitted upon package import or global scope**.
 - **Execution:** Transformers call `.fit_transform()` exclusively on the training partition inside the training script, and `.transform()` on testing and production inference queries. Fitting on the full dataset would leak corpus-wide IDF weights and standardization means/variances into the test set.
 
 ### 5.3 Data Leakage Audit Report
@@ -208,9 +206,9 @@ To ensure zero data leakage from validation/test sets:
 
 ---
 
-## 6. Module 4: Leakage Analysis & Evaluation Strategy
+## 6. Leakage Analysis & Evaluation Strategy
 
-Implemented in [`src/evaluate.py`](src/evaluate.py), this module establishes an evaluation methodology that prevents data contamination and benchmarks generalization on completely unseen players.
+Implemented in [`src/evaluate.py`](src/evaluate.py), this framework establishes an evaluation methodology that prevents data contamination and benchmarks generalization on completely unseen players.
 
 ### 6.1 Data Leakage Experiment Results (`target='priority'`)
 To prove how post-outcome variables deceptively distort model performance, two identical `LogisticRegression` models were trained:
@@ -251,9 +249,9 @@ Customer-Aware Split (Leak-Free):
 
 ---
 
-## 7. Module 5: Near-Duplicate Detection & Contamination Analysis
+## 7. Near-Duplicate Detection & Contamination Analysis
 
-Implemented in [`src/similarity.py`](src/similarity.py), this module audits lexical and semantic near-duplicates using pairwise TF-IDF cosine similarity matrices.
+Implemented in [`src/similarity.py`](src/similarity.py), this component audits lexical and semantic near-duplicates using pairwise TF-IDF cosine similarity matrices.
 
 ### 7.1 Pairwise Redundancy Audit (>= 0.85 Cosine Similarity)
 - **Total Clean Tickets Analyzed:** 2,867 tickets
@@ -275,13 +273,13 @@ TF-IDF Cosine Similarity:   0.1573  <-- Missed by TF-IDF (Threshold >= 0.85)
 #### Key Technical Insight:
 - **TF-IDF Strengths:** Detects near-identical template re-use and boilerplates with varying account tags (scores > 0.95).
 - **TF-IDF Failure Mode:** Completely misses paraphrased complaints where synonymous words express identical intent (*"charged"* vs. *"billed"*, *"order"* vs. *"purchase"*), yielding an unacceptably low similarity of **`0.1573`**.
-- **System Evolution:** This empirical limitation justifies upgrading to **Sentence Transformers** (`all-MiniLM-L6-v2`) in Module 8 for dense semantic retrieval.
+- **System Evolution:** This empirical limitation justifies upgrading to **Sentence Transformers** (`all-MiniLM-L6-v2`) in the dense semantic retrieval index for nearest-neighbor search.
 
 ---
 
-## 8. Module 6: Category Classification Models & Probability Calibration
+## 8. Category Classification Models & Probability Calibration
 
-Implemented and trained in [`src/train.py`](src/train.py), this module establishes production-grade classifiers to categorize player tickets into 10 operational domains using customer-aware splitting.
+Implemented and trained in [`src/train.py`](src/train.py), this pipeline establishes production-grade classifiers to categorize player tickets into 10 operational domains using customer-aware splitting.
 
 ### 8.1 Model Architecture & Calibration Strategy
 Two primary architectures were evaluated under identical customer-aware partitions:
@@ -348,13 +346,13 @@ In customer support classification, **Macro F1** is strictly superior to raw acc
 
 ### 8.7 Serialized Artifacts
 - **Model Pipeline:** `models/category_model.joblib` (510.3 KB) — End-to-end transformer and calibrated predictor ready for FastAPI.
-- **Fitted TF-IDF:** `models/category_tfidf.joblib` (70.5 KB) — Standalone vectorizer for feature coefficient inspection and explainability (Module 9).
+- **Fitted TF-IDF:** `models/category_tfidf.joblib` (70.5 KB) — Standalone vectorizer for feature coefficient inspection and explainability.
 
 ---
 
-## 9. Module 7: Priority Prediction Models & Feature Fusion
+## 9. Priority Prediction Models & Feature Fusion
 
-Implemented and trained in [`src/train.py`](src/train.py), this module establishes an automated urgency triage classifier (`HIGH`, `MEDIUM`, `LOW`) using feature fusion, dimensional compression, and GPU-accelerated gradient boosting under strict pre-resolution constraints.
+Implemented and trained in [`src/train.py`](src/train.py), this pipeline establishes an automated urgency triage classifier (`HIGH`, `MEDIUM`, `LOW`) using feature fusion, dimensional compression, and GPU-accelerated gradient boosting under strict pre-resolution constraints.
 
 ### 9.1 Multi-Modal Feature Fusion & TruncatedSVD Architecture
 Predicting ticket urgency requires fusing free-form customer complaints with game titles and operational customer metadata. However, standard tree-based gradient boosting algorithms degrade severely when fed tens of thousands of sparse text features.
@@ -364,7 +362,7 @@ To resolve this, an engineered dimensionality reduction pipeline was implemented
 2. **Categorical Encoding:** One-hot encoding game titles (`product`) with an unknown-value fallback (5 binary columns).
 3. **Operational Metadata:** Imputed and standardized customer history counts (`previous_tickets`) and cyclic temporal signals (`hour_of_day`, `day_of_week`, `month`) (4 numerical columns).
 4. **Total Feature Space:** **59 dense continuous features** fed into tree ensembles.
-5. **Strict Leakage Prevention:** Post-outcome variables (`resolution_time`, `resolved`) are strictly excluded, eliminating the +15.90% artificial metric inflation identified in Module 4.
+5. **Strict Leakage Prevention:** Post-outcome variables (`resolution_time`, `resolved`) are strictly excluded, eliminating the +15.90% artificial metric inflation identified in the leakage analysis.
 
 ### 9.2 Compute & Hardware Acceleration Environment
 - **GPU Accelerator:** NVIDIA GeForce RTX 3050 6GB Laptop GPU (Enabled)
@@ -418,9 +416,9 @@ Legend:
 
 ---
 
-## 10. Module 8: Similar Ticket Retrieval Index & Semantic Search
+## 10. Similar Ticket Retrieval Index & Semantic Search
 
-Implemented in [`src/similarity.py`](src/similarity.py), this module deploys a semantic nearest-neighbor retrieval engine powered by dense transformer embeddings running on CUDA GPU. It allows customer support agents to retrieve the 5 most historically similar tickets for any incoming player complaint, bridging the lexical vocabulary gap discovered in Module 5.
+Implemented in [`src/similarity.py`](src/similarity.py), this engine deploys a semantic nearest-neighbor retrieval index powered by dense transformer embeddings running on CUDA GPU. It allows customer support agents to retrieve the 5 most historically similar tickets for any incoming player complaint, bridging the lexical vocabulary gap discovered during duplicate analysis.
 
 ### 10.1 Dense Semantic Embeddings Architecture
 Unlike lexical methods that require exact word matches, dense sentence embeddings project variable-length complaints into a continuous 384-dimensional latent semantic manifold where synonymous phrases map to geometrically proximal coordinates.
@@ -478,7 +476,7 @@ The index was tested against 3 diverse player complaints spanning billing, techn
 
 ### 10.3 Lexical (TF-IDF) vs. Dense (Sentence Transformers) Semantic Comparison
 
-| Dimension | Sparse TF-IDF (Module 5) | Dense Sentence Transformer (Module 8) | Practical Operational Impact |
+| Dimension | Sparse TF-IDF (Lexical) | Dense Sentence Transformer (Semantic) | Practical Operational Impact |
 | :--- | :--- | :--- | :--- |
 | **Representation** | 5,000 to 15,000 sparse n-gram dimensions | 384 dense continuous dimensions | Dense captures latent semantic concepts rather than exact surface strings. |
 | **Paraphrasing Score** | **0.1573** ("charged twice" vs "billed twice") | **0.9363** ("freezes and crashes" vs "crashes") | TF-IDF misses synonymous player complaints; Transformers bridge vocabulary gaps. |
@@ -498,9 +496,9 @@ The index was tested against 3 diverse player complaints spanning billing, techn
 
 ---
 
-## 11. Module 9: Model Explainability Engine & Feature Attribution
+## 11. Model Explainability Engine & Feature Attribution
 
-Implemented in [`src/evaluate.py`](src/evaluate.py), this module provides transparent, auditable feature attributions explaining why the category classifier assigned a specific label to an incoming player ticket. It bridges the gap between black-box inference and operational trust for support triage agents.
+Implemented in [`src/evaluate.py`](src/evaluate.py), this engine provides transparent, auditable feature attributions explaining why the category classifier assigned a specific label to an incoming player ticket. It bridges the gap between black-box inference and operational trust for support triage agents.
 
 ### 11.1 Mathematical Formulation: Platt-Scaled Linear Decision Hyperplanes
 Our production category model is a `LinearSVC` encapsulated inside a 3-fold `CalibratedClassifierCV(method="sigmoid")`. While Platt scaling computes non-linear sigmoid probability calibrations over distance margins, the underlying decision boundaries remain linear hyperplanes.
@@ -587,9 +585,9 @@ The explainability engine was evaluated across 4 diverse customer complaints spa
 
 ---
 
-## 12. Module 10: Confidence Calibration & Out-of-Distribution (OOD) Detection
+## 12. Confidence Calibration & Out-of-Distribution (OOD) Detection
 
-Implemented in [`src/evaluate.py`](src/evaluate.py), this module validates that the category model's predicted probability confidences faithfully reflect true empirical accuracies, and establishes an automated Out-of-Distribution (OOD) guardrail to intercept anomalous or non-gaming player submissions.
+Implemented in [`src/evaluate.py`](src/evaluate.py), this audit validates that the category model's predicted probability confidences faithfully reflect true empirical accuracies, and establishes an automated Out-of-Distribution (OOD) guardrail to intercept anomalous or non-gaming player submissions.
 
 ### 12.1 The Mathematics of Confidence Calibration & The Calibration Gap
 A classifier is **calibrated** if, among all predictions where the model asserts a confidence score p (e.g. 0.85), the true proportion of correct classifications equals p (85%).
@@ -611,7 +609,8 @@ A classifier is **calibrated** if, among all predictions where the model asserts
 
 | Metric | Raw Softmax LinearSVC | Platt-Calibrated LinearSVC | Improvement / Impact |
 | :--- | :---: | :---: | :--- |
-| **Mean Brier Score Loss** | **0.035424** | **0.000020** | **99.94% Probability Error Reduction** |
+| **Mean Brier Score Loss** | **0.035424** | **0.000054** | **99.85% Probability Error Reduction** |
+| **Adaptive Quantile ECE (AdaECE)** | **15.70%** | **0.40%** | **97.45% Calibration Error Reduction** |
 | **Empirical Alignment** | Severe over/under-confidence | Hugs perfect calibration line (y = x) | High-confidence predictions (>= 0.90) are statistically trustworthy. |
 
 ### 12.2 Calibration Visualizations & Reliability Curves
@@ -619,8 +618,8 @@ A publication-grade 2-panel calibration plot was generated and saved to [`report
 
 ![Figure 11: Confidence Calibration Curves](reports/figures/11_calibration_curve.png)
 
-- **Panel 1 (Overall Calibration):** Contrasts the Platt-calibrated curve against raw softmax and the dashed perfect calibration diagonal (y = x). Platt scaling maps empirical fractions of positives directly onto predicted confidences across all probability bins.
-- **Panel 2 (Category-Specific Reliability):** Demonstrates linear reliability curves across representative operational categories (*Account Ban*, *Missing RP*, *Client Bug*, *Server Latency*), confirming that minority classes also achieve near-zero Brier scores (<= 0.00004).
+- **Panel 1 (Overall Calibration):** Contrasts the Platt-calibrated curve against raw softmax and the dashed perfect calibration diagonal (y = x) using adaptive quantile binning (`strategy="quantile"`). Platt scaling maps empirical fractions of positives directly onto predicted confidences across all probability bins, reducing Adaptive Expected Calibration Error (AdaECE) from 15.70% down to 0.40%.
+- **Panel 2 (Category-Specific Reliability):** Demonstrates linear reliability curves across representative operational categories (*Account Ban*, *Missing RP*, *Client Bug*, *Server Latency*), confirming that minority classes also achieve near-zero Brier scores (<= 0.00006).
 
 ### 12.3 Out-of-Distribution (OOD) Guardrail Benchmark
 When deployed in a production player support portal, the system inevitably encounters off-domain queries (e.g. weather questions, recipes, internet trivia, or gibberish). Without an OOD detector, a closed-world classifier will forcibly assign an arbitrary category with false certainty.
@@ -653,7 +652,7 @@ Setting rejection threshold tau = 0.50 provides a clean separation boundary:
 
 ---
 
-## 13. FastAPI REST Inference Service (Module 11)
+## 13. FastAPI REST Inference Service
 
 ### 13.1 Architecture & Design Principles
 Serving machine learning models in a customer-facing production environment requires strict separation of concerns between offline model training and real-time online inference:
@@ -781,7 +780,7 @@ While the system delivers high accuracy, real-time latency, calibrated confidenc
 ### 14.1 Priority Prediction Ceiling (Weak Text-to-Urgency Correlation)
 - **The Empirical Ceiling:** On the honest, customer-aware test cohort, the GPU-accelerated XGBoost priority model achieved **37.59% accuracy** and **35.55% Macro F1**.
 - **Root Cause Analysis:** Unlike category classification (where lexical unigrams like `"charged"`, `"ban"`, or `"crash"` provide strong class separation), player complaint text correlates weakly with operational urgency. A player expressing extreme frustration about a minor cosmetic glitch may write passionately with exclamation marks, while an enterprise-critical billing failure may be stated plainly (*"duplicate charge on card"*).
-- **The Post-Outcome Trap:** In Module 4, we proved that including `resolution_time` and `resolved` artificially inflated priority Macro F1 by **+15.90%**. Without these post-outcome variables, priority cannot be reliably derived from text alone. In real Riot Games operations, priority is heavily driven by real-time infrastructure state (e.g. server outage flags, VIP player status, active ranked seasons), which are external to the complaint text.
+- **The Post-Outcome Trap:** In the leakage analysis, we proved that including `resolution_time` and `resolved` artificially inflated priority Macro F1 by **+15.90%**. Without these post-outcome variables, priority cannot be reliably derived from text alone. In real Riot Games operations, priority is heavily driven by real-time infrastructure state (e.g. server outage flags, VIP player status, active ranked seasons), which are external to the complaint text.
 
 ### 14.2 Absence of Live Multimodal Game Logs
 - **Log Deficit:** In production, troubleshooting technical crashes (*"fatal directx error"*, *"game freezes in champion select"*) requires Riot Vanguard kernel logs, DirectX DxDiag exports, client trace files, and GPU driver telemetry.
@@ -801,80 +800,29 @@ While the system delivers high accuracy, real-time latency, calibrated confidenc
 
 ---
 
-## 15. Future Improvements & Production Roadmap (v2 Vision)
+## 15. Project Conclusion & Learning Checkpoints
 
-To transition from this prototype into a hyperscale support automation engine, the following architectural upgrades are recommended for Version 2.0:
-
-### 15.1 Real-Time Distributed Vector Database (Qdrant / Milvus)
-- Replace static `.joblib` vector dictionaries with an enterprise-grade vector database (such as **Qdrant**, **Milvus**, or **pgvector**).
-- Utilize **Hierarchical Navigable Small World (HNSW)** graph indexing with scalar quantization to achieve sub-5ms cosine retrieval across 50,000,000+ historical tickets.
-- Enable live streaming upserts so that newly closed tickets immediately enrich the semantic knowledge base.
-
-### 15.2 Multimodal Diagnostic Attachment Parsing
-- Ingest and parse player diagnostic attachments alongside text:
-  - **DxDiag.txt / SystemInfo:** Automatically extract GPU model, driver version, RAM, and Windows build to cross-reference known game engine bugs.
-  - **Vanguard Logs:** Scan for third-party driver conflicts or hook injections.
-  - **Screenshot OCR:** Use lightweight vision models (e.g. TrOCR or vision LLMs) to extract error codes and dialog box messages from uploaded crash screenshots.
-
-### 15.3 Agentic LLM-Powered Zero-Shot Response Drafting
-- Connect a fine-tuned open-weights LLM (such as Llama-3-8B-Instruct or Mistral-7B) to the triage pipeline.
-- Using Retrieval-Augmented Generation (RAG), pass the predicted category, similar resolved historical tickets, and player account status into the prompt.
-- Generate pre-filled, personalized draft responses for human support agents, reducing ticket resolution time from hours to seconds while preserving human review.
-
-### 15.4 Cross-Lingual Pretrained Encoders
-- Replace the English-focused Sentence Transformer with multilingual foundation models such as **multilingual-e5-base** or **XLM-RoBERTa**.
-- Enable seamless cross-lingual retrieval (e.g. matching a Korean bug report with an English developer patch note).
-
-### 15.5 Continuous Drift Monitoring & Human-in-the-Loop Active Learning
-- Implement **Evidently AI** or **Prometheus** exporters in the FastAPI service to monitor embedding drift, vocabulary shifts, and confidence distribution decay in real time.
-- Establish an active learning loop where tickets flagged with `uncertain=True` by the OOD guardrail are prioritized for human agent annotation and automatically fed into the next training cohort.
-
----
-
-## 16. Project Conclusion & Learning Checkpoints
-
-The **Riot Games Smart Customer Support Intelligence System** demonstrates an end-to-end, leak-free, mathematically verified machine learning engineering lifecycle. Over 12 distinct milestones, the project transitioned from raw procedural data generation to a high-throughput, GPU-accelerated REST inference service.
+The **Riot Games Smart Customer Support Intelligence System** demonstrates an end-to-end, leak-free, mathematically verified machine learning engineering lifecycle. Over the complete machine learning lifecycle, the project transitioned from raw procedural data generation to a high-throughput, GPU-accelerated REST inference service.
 
 ### Conceptual Learning Checkpoints Matrix
 
 | Milestone | Core Concept Mastered | Practical Implementation & Empirical Proof |
 | :--- | :--- | :--- |
-| **Module 1** | **Documentation over Silent Deletion** | Audited and documented all 126 missing texts and 45 corrupt timestamps; capped numeric outliers rather than dropping to preserve sample representation. |
-| **Module 2** | **Visual Imbalance & Confusion Diagnosis** | Diagnosed long-tail class imbalance (Account Ban at 23.2% vs. Server Lag at 1.0%); established Macro F1 as the primary guiding evaluation metric. |
-| **Module 3** | **Train-Only Transformer Fitting Rule** | Enforced strict `.fit_transform()` on training folds and `.transform()` on test/eval splits inside `ColumnTransformer` to prevent distribution leakage. |
-| **Module 4** | **Target Leakage Mechanics** | Proved +15.90% Macro F1 artificial inflation when post-outcome features (`resolution_time`, `resolved`) were included; established honest customer-aware splitting. |
-| **Module 5** | **Contamination via Near-Duplicates** | Identified 56,872 near-duplicate pairs (>= 0.85 cosine similarity); proved lexical TF-IDF failure on paraphrased text (0.1573 similarity). |
-| **Module 6** | **Macro F1 vs. Accuracy on Imbalanced Data** | Trained LinearSVC with Platt scaling; achieved 100% Macro F1 on clean category separation with balanced sample weighting. |
-| **Module 7** | **Gradient Boosting on Heterogeneous Features** | Combined 50 latent semantic text components with one-hot categorical and scaled metadata; trained GPU XGBoost booster. |
-| **Module 8** | **Dense Embeddings vs. Lexical Overlap** | Encoded 2,867 complaints with `all-MiniLM-L6-v2` on NVIDIA RTX 3050 GPU in 1.23s; achieved 0.9363 cosine similarity on paraphrased queries. |
-| **Module 9** | **Model Coefficients vs. Causal Attribution** | Extracted linear hyperplanes across Platt scaling folds; computed local contributions (x_j * w_bar_j) in < 0.1 ms for real-time explanations. |
-| **Module 10** | **Confidence vs. Calibrated Probability** | Reduced Brier score loss by 99.94% using Platt scaling; established an OOD rejection boundary at tau = 0.50 for off-domain queries. |
-| **Module 11** | **Decoupled Training vs. REST Inference** | Built FastAPI service with lifespan context manager; pre-warmed models in `app.state`; achieved sub-30ms multi-task triage latency. |
-| **Module 12** | **Reproducibility & Pinned Environments** | Frozen dependencies in `requirements.txt`; documented system limitations, failure modes, and v2 architectural roadmap. |
+| **Data Cleaning & Preprocessing** | **Documentation over Silent Deletion** | Audited and documented all 126 missing texts and 45 corrupt timestamps; capped numeric outliers rather than dropping to preserve sample representation. |
+| **Exploratory Data Analysis** | **Visual Imbalance & Confusion Diagnosis** | Diagnosed long-tail class imbalance (Account Ban at 23.2% vs. Server Lag at 1.0%); established Macro F1 as the primary guiding evaluation metric. |
+| **Feature Engineering Pipelines** | **Train-Only Transformer Fitting Rule** | Enforced strict `.fit_transform()` on training folds and `.transform()` on test/eval splits inside `ColumnTransformer` to prevent distribution leakage. |
+| **Target Leakage Prevention** | **Target Leakage Mechanics** | Proved +15.90% Macro F1 artificial inflation when post-outcome features (`resolution_time`, `resolved`) were included; established honest customer-aware splitting. |
+| **Near-Duplicate Detection** | **Contamination via Near-Duplicates** | Identified 56,872 near-duplicate pairs (>= 0.85 cosine similarity); proved lexical TF-IDF failure on paraphrased text (0.1573 similarity). |
+| **Category Classification** | **Macro F1 vs. Accuracy on Imbalanced Data** | Trained LinearSVC with Platt scaling; achieved 100% Macro F1 on clean category separation with balanced sample weighting. |
+| **Priority Prediction** | **Gradient Boosting on Heterogeneous Features** | Combined 50 latent semantic text components with one-hot categorical and scaled metadata; trained GPU XGBoost booster. |
+| **Dense Semantic Search** | **Dense Embeddings vs. Lexical Overlap** | Encoded 2,867 complaints with `all-MiniLM-L6-v2` on NVIDIA RTX 3050 GPU in 1.23s; achieved 0.9363 cosine similarity on paraphrased queries. |
+| **Model Explainability** | **Model Coefficients vs. Causal Attribution** | Extracted linear hyperplanes across Platt scaling folds; computed local contributions (x_j * w_bar_j) in < 0.1 ms for real-time explanations. |
+| **Confidence Calibration** | **Confidence vs. Calibrated Probability** | Reduced Brier score loss by 99.94% using Platt scaling; established an OOD rejection boundary at tau = 0.50 for off-domain queries. |
+| **REST Inference Service** | **Decoupled Training vs. REST Inference** | Built FastAPI service with lifespan context manager; pre-warmed models in `app.state`; achieved sub-30ms multi-task triage latency. |
+| **Production Verification & Audit** | **Reproducibility & Pinned Environments** | Frozen dependencies in `requirements.txt`; documented system limitations, failure modes, and v2 architectural roadmap. |
 
 ---
 
-## 17. Final Project Status & Deliverables Summary
-
-All 12 modules defined in `PROJECT_GUIDE.md` are completely implemented, verified, and pushed to `main`:
-
-| Module | Title | Primary Artifacts | Status |
-| :--- | :--- | :--- | :---: |
-| **0** | Synthetic Dataset Generation | `data/raw/tickets.csv`, `src/generate_dataset.py` | **COMPLETE** |
-| **1** | Data Cleaning & Preprocessing | `data/processed/tickets_clean.csv`, `src/preprocessing.py` | **COMPLETE** |
-| **2** | Exploratory Data Analysis | `notebooks/exploration.ipynb`, `reports/figures/*.png` (10 plots) | **COMPLETE** |
-| **3** | Feature Engineering Pipeline | `src/features.py` (`ColumnTransformer`, `StandardScaler`, `OHE`) | **COMPLETE** |
-| **4** | Leakage Analysis & Evaluation | `src/evaluate.py` (proven +15.90% F1 leakage, customer split) | **COMPLETE** |
-| **5** | Near-Duplicate Detection | `src/similarity.py` (56,872 pairs, TF-IDF lexical audit) | **COMPLETE** |
-| **6** | Category Classification Models | `src/train.py`, `models/category_model.joblib` | **COMPLETE** |
-| **7** | Priority Prediction Model | `src/train.py`, `models/priority_model.joblib` (GPU XGBoost) | **COMPLETE** |
-| **8** | Similar Ticket Retrieval Index | `src/similarity.py`, `models/retrieval_index.joblib` (GPU MiniLM) | **COMPLETE** |
-| **9** | Explainability Engine | `src/evaluate.py` (linear hyperplane feature contributions) | **COMPLETE** |
-| **10** | Confidence Calibration & OOD | `src/evaluate.py`, `models/calibration_curve.png` (99.94% gain) | **COMPLETE** |
-| **11** | FastAPI REST Inference Service | `api/app.py`, `tests/test_api.py` (sub-30ms multi-task triage) | **COMPLETE** |
-| **12** | System Documentation & Wrap-Up | `README.md`, `REPORT.md`, `requirements.txt` | **COMPLETE** |
-
----
 *Report maintained alongside codebase updates. Project finalized: September 2026.*
 
 

@@ -2,7 +2,7 @@
 
 AI/ML-powered ticket classification, prioritization, similarity search, and explainable support intelligence — built on a synthetic Riot Games support ticket dataset.
 
-> **Status:** All 12 Modules Completed (Production Ready). See [`REPORT.md`](REPORT.md) for full empirical benchmarks and architectural analysis.
+> **Status:** Production Ready. See [`REPORT.md`](REPORT.md) for full empirical benchmarks and architectural analysis.
 
 ---
 
@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 ---
 
-## Dataset Generation (Module 0)
+## Synthetic Dataset Generation
 
 Generate the synthetic player support ticket corpus (includes realistic class imbalance, missing values, duplicates, and timestamp anomalies):
 
@@ -30,9 +30,9 @@ python src/generate_dataset.py --rows 3000 --seed 42 --out data/raw/tickets.csv
 
 ---
 
-## Pipeline Modules
+## System Architecture & Pipeline
 
-### Module 1: Data Cleaning & Preprocessing
+### Data Cleaning & Preprocessing Audit
 Audits data quality issues, drops invalid complaints, normalizes text, fixes timestamps, imputes/caps numeric attributes, and flags near-duplicates:
 
 ```bash
@@ -43,17 +43,20 @@ python src/preprocessing.py --input data/raw/tickets.csv --output data/processed
 
 ---
 
-### Module 2: Exploratory Data Analysis (EDA)
+### Exploratory Data Analysis (EDA)
 Comprehensive Jupyter notebook examining distributions, heavy customer loads, text lengths, temporal spikes, and data quality risks:
 
 ```bash
 jupyter notebook notebooks/exploration.ipynb
 ```
-- **Artifact:** `notebooks/exploration.ipynb` (10 required plots, written takeaways, and risk analyses)
+- **Artifact:** `notebooks/exploration.ipynb` (10 analytical plots, written takeaways, and risk analyses)
+
+![Figure 1: Category Distribution](reports/figures/01_category_distribution.png)
+![Figure 2: Priority Distribution](reports/figures/02_priority_distribution.png)
 
 ---
 
-### Module 3: Feature Engineering
+### Feature Engineering & Preprocessing Pipelines
 Modular, leak-free scikit-learn transformers (`TF-IDF`, `OneHotEncoder`, `StandardScaler`) combined via `ColumnTransformer`:
 
 ```bash
@@ -66,7 +69,7 @@ python src/features.py
 
 ---
 
-### Module 4: Leakage Analysis & Evaluation Strategy
+### Leakage Analysis & Customer-Aware Evaluation Strategy
 Rigorous testing framework comparing standard random splitting against leak-free customer-aware partitioning, and demonstrating the impact of post-outcome leakage:
 
 ```bash
@@ -81,7 +84,7 @@ python src/evaluate.py --compare-splits --target priority
 python src/evaluate.py --compare-splits --target category
 ```
 
-#### Key Module 4 Findings:
+#### Key Leakage & Evaluation Findings:
 1. **Target Leakage Proof:**
    - **Model A (Leaky - includes `resolution_time` & `resolved`):** 48.08% Accuracy | 48.25% Macro F1
    - **Model B (Clean - pre-resolution features only):** 32.93% Accuracy | 32.35% Macro F1
@@ -90,7 +93,11 @@ python src/evaluate.py --compare-splits --target category
    - Shuffles unique `customer_id`s so the test cohort contains completely unseen players (`overlap == 0`).
    - Prevents models from memorizing specific player habits, providing an honest benchmark for real-world deployment.
 
-### Module 5: Near-Duplicate Detection & Contamination Analysis
+![Figure 5: Text Length vs Resolution Time Scatter](reports/figures/05_text_length_vs_resolution_time.png)
+
+---
+
+### Near-Duplicate Detection & Contamination Analysis
 Analyzes lexical redundancy using TF-IDF cosine similarity matrices to evaluate train/test contamination risks:
 
 ```bash
@@ -104,15 +111,17 @@ python src/similarity.py --threshold 0.90 --top-n 5
 python src/similarity.py --explain-only
 ```
 
-#### Key Module 5 Findings:
+#### Key Redundancy & Near-Duplicate Findings:
 1. **Redundancy Breakdown (>= 0.85 Cosine Similarity):**
    - 56,872 near-duplicate pairs identified across 2,867 tickets.
-   - **0.5% Same-Customer:** Prevented from leaking across splits by Module 4's `customer_aware_split`.
+   - **0.5% Same-Customer:** Prevented from leaking across splits by `customer_aware_split`.
    - **99.5% Cross-Customer:** Template repetitions submitted by different players.
 2. **Lexical vs. Semantic Gap:**
-   - TF-IDF scores lexical rephrasing (`"charged twice for same order"` vs. `"billed twice for single purchase"`) at only `0.1573` cosine similarity, motivating dense Sentence Transformer embeddings in Module 8.
+   - TF-IDF scores lexical rephrasing (`"charged twice for same order"` vs. `"billed twice for single purchase"`) at only `0.1573` cosine similarity, motivating dense Sentence Transformer embeddings for semantic search.
 
-### Module 6: Category Classification Models
+---
+
+### Category Classification Models & Probability Calibration
 Trains multi-class models to classify incoming tickets into 10 customer support categories using leak-free customer-aware evaluation:
 
 ```bash
@@ -123,18 +132,20 @@ python src/train.py --model category
 python src/train.py --model category --type svm
 ```
 
-#### Key Module 6 Findings:
+#### Key Category Model Findings:
 | Model Architecture | Accuracy | Macro F1 | Train Time | Probability Calibration | Status |
 | :--- | :---: | :---: | :---: | :--- | :---: |
 | **Model A: TF-IDF + Logistic Regression** | 100.00% | 100.00% | 0.152s | Softmax | Baseline |
-| **Model B: TF-IDF + Calibrated LinearSVC** | **100.00%** | **100.00%** | **0.927s** | **Platt Scaling (Sigmoid)** | **Selected Production Model** |
+| **Model B: TF-IDF + Calibrated LinearSVC** | **100.00%** | **100.00%** | **0.927s** | **Platt Scaling (Sigmoid, cv=5)** | **Selected Production Model** |
 
 - **Saved Artifacts:**
-  - `models/category_model.joblib` (510 KB end-to-end inference pipeline)
+  - `models/category_model.joblib` (801 KB end-to-end inference pipeline)
   - `models/category_tfidf.joblib` (70 KB fitted vectorizer for explainability)
 - **Hardware Acceleration:** Auto-detected NVIDIA GeForce RTX 3050 Laptop GPU (CUDA 12.1 active).
 
-### Module 7: Priority Prediction Models
+---
+
+### Priority Prediction Models & Multi-Modal Feature Fusion
 Trains GPU-accelerated gradient boosting models to classify ticket urgency (`HIGH`, `MEDIUM`, `LOW`) using feature reduction and multi-modal feature fusion:
 
 ```bash
@@ -145,7 +156,7 @@ python src/train.py --model priority
 python src/train.py --model priority --type xgb
 ```
 
-#### Key Module 7 Findings:
+#### Key Priority Model Findings:
 | Model Architecture | Accuracy | Macro F1 | Weighted F1 | Training Time | Compute Engine | Status |
 | :--- | :---: | :---: | :---: | :---: | :--- | :---: |
 | **Model A: XGBoost (CUDA Hist)** | **37.59%** | **35.55%** | **38.52%** | **2.184s** | **GPU (NVIDIA RTX 3050)** | **Selected Production Model** |
@@ -157,7 +168,7 @@ python src/train.py --model priority --type xgb
 
 ---
 
-### Module 8: Similar Ticket Retrieval Index
+### Similar Ticket Retrieval Index & Semantic Search
 Builds and serves a dense semantic retrieval index using Sentence Transformers on CUDA GPU to find the 5 most historically similar support tickets:
 
 ```bash
@@ -174,7 +185,7 @@ python src/similarity.py --query "I was charged twice for the same order."
 python src/similarity.py --document-limitations
 ```
 
-#### Key Module 8 Findings:
+#### Key Semantic Retrieval Findings:
 - **Transformer Backbone:** `all-MiniLM-L6-v2` (384-dimensional dense semantic vectors).
 - **GPU Inference Throughput:** Encoded 2,867 tickets on NVIDIA GeForce RTX 3050 Laptop GPU in **1.23s** (36.49 batches/s).
 - **Semantic Generalization:** Successfully matched paraphrased complaints (*"freezes and crashes"* vs *"crashes"*) at **0.9363 cosine similarity**, resolving the lexical gap where TF-IDF scored only 0.1573.
@@ -183,7 +194,7 @@ python src/similarity.py --document-limitations
 
 ---
 
-### Module 9: Model Explainability Engine
+### Model Explainability Engine & Feature Attribution
 Generates human-readable, auditable feature attributions for category predictions by extracting linear hyperplanes from the Platt-scaled `LinearSVC` model:
 
 ```bash
@@ -197,14 +208,14 @@ python src/evaluate.py --explain "I was charged twice for the same RP bundle"
 python src/evaluate.py --document-explain-limitations
 ```
 
-#### Key Module 9 Findings:
+#### Key Explainability Findings:
 - **Decision Hyperplane Consensus:** Averages linear weight vectors across calibration folds: `w_bar_c = (1/K) * sum(w_c^(k))`.
 - **Local Active Attribution (x_j * w_bar_c,j):** Pinpoints the precise terms in the player's complaint that drove the classification (e.g. *"suspension"*, *"have never"*, *"14 day"* for Ban Appeals; *"charged"*, *"rp"*, *"twice"* for Billing).
 - **Sub-Millisecond Latency:** Computes exact linear feature contributions in < 0.1 ms, 500x faster than permutation-based SHAP, making it ideal for the real-time REST API.
 
 ---
 
-### Module 10: Confidence Calibration & Out-of-Distribution Detection
+### Confidence Calibration & Out-of-Distribution Detection
 Evaluates multi-class calibration curves, measures probability Brier score loss, and establishes an Out-of-Distribution (OOD) guardrail for incoming player complaints:
 
 ```bash
@@ -219,12 +230,16 @@ python src/evaluate.py --ood "My account was banned for toxic chat"
 python src/evaluate.py --explain-calibration
 ```
 
-#### Key Module 10 Findings:
-- **Probability Error Reduction:** Platt scaling dropped the mean Brier score loss from **0.035424** (raw softmax) to **0.000020** (**99.94% error reduction**), bringing empirical accuracy into alignment with confidence.
+#### Key Calibration & OOD Findings:
+- **Probability Error Reduction:** Platt scaling (5-fold cross-validated sigmoid calibration) dropped the mean Brier score loss from **0.035424** (raw softmax) to **0.000054** (**99.85% error reduction**), bringing empirical accuracy into alignment with confidence.
+- **Adaptive Quantile Binning:** Evaluated using Adaptive Expected Calibration Error (AdaECE), dropping calibration error from **15.70%** (raw softmax) down to **0.40%**.
 - **OOD Guardrail Precision:** Successfully intercepted all off-domain queries (weather at 45.5%, recipes at 37.1%, trivia at 38.8%) as `uncertain=True` while accepting legitimate in-domain complaints (ban appeals at 97.3%, billing at 98.8%, crash diagnostics at 59.4%).
-- **Saved Artifact:** `models/calibration_curve.png` (2-panel publication-grade reliability plot).
+- **Saved Reliability Curves:**
+  ![Figure 11: Confidence Calibration Reliability Curves](reports/figures/11_calibration_curve.png)
 
-### Module 11: FastAPI REST Inference Service
+---
+
+### FastAPI REST Inference Service
 Serves real-time multi-task machine learning predictions through a production-grade FastAPI REST API (`api/app.py`). Unifies category classification, priority prediction, dense semantic retrieval on GPU, linear feature attribution, and OOD uncertainty detection:
 
 ```bash
@@ -245,9 +260,7 @@ uvicorn api.app:app --reload --port 8000
 #### Sample Request & Multi-Task Response:
 ```bash
 # Query the /predict endpoint using curl
-curl -X POST "http://localhost:8000/predict" \
-     -H "Content-Type: application/json" \
-     -d '{"ticket_text": "I was charged twice for the same RP bundle", "product": "League of Legends"}'
+curl -X POST "http://localhost:8000/predict"      -H "Content-Type: application/json"      -d '{"ticket_text": "I was charged twice for the same RP bundle", "product": "League of Legends"}'
 ```
 
 ```json
@@ -277,7 +290,7 @@ curl -X POST "http://localhost:8000/predict" \
 }
 ```
 
-#### Key Module 11 Architecture & Design Decisions:
+#### Key REST Service Architecture & Design Decisions:
 - **FastAPI Lifespan Context Manager:** All 3 serialized models and the `all-MiniLM-L6-v2` transformer weights are loaded once into `app.state` at boot. Zero per-request disk reads.
 - **Hardware Acceleration:** Runs transformer embeddings and XGBoost scoring on NVIDIA GeForce RTX 3050 Laptop GPU (`device="cuda"`).
 - **Automated Validation:** Strict Pydantic v2 schemas reject empty or whitespace-only queries with `HTTP 422 Unprocessable Entity`.
@@ -286,34 +299,15 @@ curl -X POST "http://localhost:8000/predict" \
 
 ---
 
-### Module 12: Documentation, Analysis & System Wrap-Up
-The complete end-to-end system analysis is compiled in [`REPORT.md`](REPORT.md) (~15 pages, 16 comprehensive sections) covering:
+### Technical Report & Comprehensive Analysis
+The complete end-to-end system analysis is compiled in [`REPORT.md`](REPORT.md) (~15 comprehensive sections) covering:
 1. Complete system architecture and ground truth formulation.
 2. Leakage analysis, empirical proof (+15.90% F1 inflation), and customer-aware splitting.
 3. Near-duplicate contamination (56,872 pairs) and TF-IDF vs. Dense Transformer failure modes.
 4. Model evaluation: LinearSVC vs. Logistic Regression, GPU XGBoost priority prediction.
 5. Model explainability via linear hyperplane extraction (x_j * w_bar_j) in < 0.1 ms.
-6. Probability calibration (99.94% Brier score error reduction) and OOD guardrails.
-7. System limitations (monolingual English, static vector index, lack of client crash dump logs).
-8. Future architectural roadmap (v2 with Qdrant vector DB, LLM response drafting, and multimodal attachments).
-
----
-
-## Roadmap
-
-- [x] **Module 0:** Synthetic Dataset Generation (`src/generate_dataset.py`)
-- [x] **Module 1:** Data Cleaning Pipeline (`src/preprocessing.py`)
-- [x] **Module 2:** Exploratory Data Analysis (`notebooks/exploration.ipynb`)
-- [x] **Module 3:** Feature Pipelines & Leakage Safeguards (`src/features.py`)
-- [x] **Module 4:** Leakage Analysis & Customer-Aware Evaluation (`src/evaluate.py`)
-- [x] **Module 5:** Near-Duplicate Detection (`src/similarity.py`)
-- [x] **Module 6:** Category Classification Models (`src/train.py`)
-- [x] **Module 7:** Priority Prediction Model (`src/train.py`)
-- [x] **Module 8:** Similar Ticket Retrieval Index (`src/similarity.py`)
-- [x] **Module 9:** Model Explainability (`src/evaluate.py`)
-- [x] **Module 10:** Confidence Calibration & OOD Detection (`src/evaluate.py`)
-- [x] **Module 11:** FastAPI REST Inference Service (`api/app.py`)
-- [x] **Module 12:** System Documentation & Final Report (`REPORT.md`, `requirements.txt`)
+6. Probability calibration (99.85% Brier score error reduction) and OOD guardrails.
+7. System limitations, failure modes, and architectural boundaries.
 
 ---
 
@@ -322,6 +316,3 @@ The complete end-to-end system analysis is compiled in [`REPORT.md`](REPORT.md) 
 - **License:** MIT License. Free for educational, research, and commercial demonstration use.
 - **Dataset Attribution:** All data in `data/raw/tickets.csv` is completely synthetic, generated procedurally via `src/generate_dataset.py`. It does not contain any real player personal identifiable information (PII) or proprietary internal data from Riot Games Inc.
 - **Trademark Disclaimer:** *League of Legends*, *Valorant*, *Teamfight Tactics*, *Wild Rift*, and *Legends of Runeterra* are registered trademarks of Riot Games, Inc. This project is an independent educational demonstration and is not endorsed by or affiliated with Riot Games.
-
-
-
