@@ -299,6 +299,46 @@ curl -X POST "http://localhost:8000/predict"      -H "Content-Type: application/
 
 ---
 
+### Interactive Support Triage Web Dashboard
+Modern, uncluttered React web application for end-to-end support triage, model explainability visualization, and dense ticket retrieval:
+
+- **Frontend Architecture:** React 19, TypeScript, Vite 8, Tailwind CSS, Shadcn UI, and Recharts.
+- **Riot Games Corporate Theme:** Dark slate aesthetic (`#0f1015`), authentic Riot Games fist branding, and distinct color codes for triage priorities (Red: High, Amber: Medium, Green: Low).
+- **Single-Field Input:** Enter or paste raw player complaints directly with one-click test scenarios (Billing, Client Crash, Ban Appeal, Toxic Behavior, OOD/Ambiguous Query).
+- **Statistical Explainability:** Real-time horizontal bar charts displaying local n-gram TF-IDF contributions ($x_j \cdot w_j$) and tooltips explaining AdaECE and Weighted F1.
+- **Dense Retrieval Table:** Top semantically similar tickets from historical database with cosine similarity scores and snippets.
+
+```bash
+# 1. Navigate to UI directory
+cd ui
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment (points to local FastAPI backend)
+cp .env.example .env
+
+# 4. Launch local development server
+npm run dev
+# Dashboard available at: http://localhost:5173
+
+# 5. Build for production
+npm run build
+```
+
+#### Dashboard Showcase
+
+![Figure 12: Riot Games Support Intelligence UI - Ticket Input Panel](reports/figures/12_ui_ticket_input.png)
+*Figure 12: Incoming ticket input form featuring one-click test scenarios and real-time character count.*
+
+![Figure 13: Riot Games Support Intelligence UI - Prediction Summary](reports/figures/13_ui_prediction_summary.png)
+*Figure 13: Multi-task inference cards showing Platt-calibrated Category classification, confidence bars, and XGBoost triage priority tier.*
+
+![Figure 14: Riot Games Support Intelligence UI - Explainability & Dense Retrieval](reports/figures/14_ui_explainability_retrieval.png)
+*Figure 14: Linear hyperplane token attributions chart (positive/negative influence) and dense semantic retrieval matches table.*
+
+---
+
 ### Technical Report & Comprehensive Analysis
 The complete end-to-end system analysis is compiled in [`REPORT.md`](REPORT.md) (~15 comprehensive sections) covering:
 1. Complete system architecture and ground truth formulation.
