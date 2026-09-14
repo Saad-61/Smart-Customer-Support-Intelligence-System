@@ -7,25 +7,26 @@
 ---
 
 ## Table of Contents
-1. [Executive Summary & System Architecture](#1-executive-summary-system-architecture)
-2. [Dataset Generation & Ground Truth Formulation](#2-dataset-generation-ground-truth-formulation)
-3. [Data Cleaning & Preprocessing Audit](#3-data-cleaning-preprocessing-audit)
-4. [Exploratory Data Analysis & Empirical Insights](#4-exploratory-data-analysis-empirical-insights)
-5. [Feature Engineering & Preprocessing Architecture](#5-feature-engineering-preprocessing-architecture)
-6. [Leakage Analysis & Evaluation Strategy](#6-leakage-analysis-evaluation-strategy)
-7. [Near-Duplicate Detection & Contamination Analysis](#7-near-duplicate-detection-contamination-analysis)
-8. [Category Classification Models & Probability Calibration](#8-category-classification-models-probability-calibration)
-9. [Priority Prediction Models & Feature Fusion](#9-priority-prediction-models-feature-fusion)
-10. [Similar Ticket Retrieval Index & Semantic Search](#10-similar-ticket-retrieval-index-semantic-search)
-11. [Model Explainability Engine & Feature Attribution](#11-model-explainability-engine-feature-attribution)
-12. [Confidence Calibration & Out-of-Distribution (OOD) Detection](#12-confidence-calibration-out-of-distribution-ood-detection)
-13. [FastAPI REST Inference Service](#13-fastapi-rest-inference-service)
-14. [System Limitations & Failure Modes](#14-system-limitations-failure-modes)
-15. [Project Conclusion & Learning Checkpoints](#15-project-conclusion-learning-checkpoints)
+- [1. Executive Summary and System Architecture](#1-executive-summary-and-system-architecture)
+- [2. Dataset Generation and Ground Truth Formulation](#2-dataset-generation-and-ground-truth-formulation)
+- [3. Data Cleaning and Preprocessing Audit](#3-data-cleaning-and-preprocessing-audit)
+- [4. Exploratory Data Analysis and Empirical Insights](#4-exploratory-data-analysis-and-empirical-insights)
+- [5. Feature Engineering and Preprocessing Architecture](#5-feature-engineering-and-preprocessing-architecture)
+- [6. Leakage Analysis and Evaluation Strategy](#6-leakage-analysis-and-evaluation-strategy)
+- [7. Near-Duplicate Detection and Contamination Analysis](#7-near-duplicate-detection-and-contamination-analysis)
+- [8. Category Classification Models and Probability Calibration](#8-category-classification-models-and-probability-calibration)
+- [9. Priority Prediction Models and Feature Fusion](#9-priority-prediction-models-and-feature-fusion)
+- [10. Similar Ticket Retrieval Index and Semantic Search](#10-similar-ticket-retrieval-index-and-semantic-search)
+- [11. Model Explainability Engine and Feature Attribution](#11-model-explainability-engine-and-feature-attribution)
+- [12. Confidence Calibration and Out-of-Distribution Detection](#12-confidence-calibration-and-out-of-distribution-detection)
+- [13. FastAPI REST Inference Service](#13-fastapi-rest-inference-service)
+- [14. System Limitations and Failure Modes](#14-system-limitations-and-failure-modes)
+- [15. Project Conclusion and Learning Checkpoints](#15-project-conclusion-and-learning-checkpoints)
 
 ---
 
-## 1. Executive Summary & System Architecture
+<a id="1-executive-summary-and-system-architecture"></a>
+## 1. Executive Summary and System Architecture
 
 This report provides an in-depth technical audit, empirical evaluation, and architectural record for the **Riot Games Smart Customer Support Intelligence System**. The project develops a multi-stage AI/ML system designed to ingest, classify, prioritize, retrieve, and explain player support tickets across Riot Games titles (*League of Legends*, *Valorant*, *Teamfight Tactics*, *Wild Rift*, and *Legends of Runeterra*).
 
@@ -62,7 +63,8 @@ This report provides an in-depth technical audit, empirical evaluation, and arch
 
 ---
 
-## 2. Dataset Generation & Ground Truth Formulation
+<a id="2-dataset-generation-and-ground-truth-formulation"></a>
+## 2. Dataset Generation and Ground Truth Formulation
 
 ### 2.1 Synthetic Data Generation Strategy
 To provide realistic operational telemetry without compromising private player data, a domain-accurate synthetic data generator was implemented in [`src/generate_dataset.py`](src/generate_dataset.py). The generator synthesizes realistic distributions based on real-world support ticket mechanics:
@@ -84,7 +86,8 @@ To replicate real-world data collection failures, intentional data quality defec
 
 ---
 
-## 3. Data Cleaning & Preprocessing Audit
+<a id="3-data-cleaning-and-preprocessing-audit"></a>
+## 3. Data Cleaning and Preprocessing Audit
 
 Implemented in [`src/preprocessing.py`](src/preprocessing.py), this component audits anomalies, repairs corrupt records, normalizes NLP text, and extracts temporal signals.
 
@@ -107,7 +110,8 @@ Implemented in [`src/preprocessing.py`](src/preprocessing.py), this component au
 
 ---
 
-## 4. Exploratory Data Analysis & Empirical Insights
+<a id="4-exploratory-data-analysis-and-empirical-insights"></a>
+## 4. Exploratory Data Analysis and Empirical Insights
 
 Implemented and executed in [`notebooks/exploration.ipynb`](notebooks/exploration.ipynb), 10 comprehensive analytical visualizations were conducted to diagnose class representation, player behavior, text length distributions, and operational temporal spikes.
 
@@ -181,7 +185,8 @@ Implemented and executed in [`notebooks/exploration.ipynb`](notebooks/exploratio
 
 ---
 
-## 5. Feature Engineering & Preprocessing Architecture
+<a id="5-feature-engineering-and-preprocessing-architecture"></a>
+## 5. Feature Engineering and Preprocessing Architecture
 
 Implemented in [`src/features.py`](src/features.py), this component establishes modular, leak-free feature transformation pipelines using scikit-learn.
 
@@ -206,7 +211,8 @@ To ensure zero data leakage from validation/test sets:
 
 ---
 
-## 6. Leakage Analysis & Evaluation Strategy
+<a id="6-leakage-analysis-and-evaluation-strategy"></a>
+## 6. Leakage Analysis and Evaluation Strategy
 
 Implemented in [`src/evaluate.py`](src/evaluate.py), this framework establishes an evaluation methodology that prevents data contamination and benchmarks generalization on completely unseen players.
 
@@ -249,7 +255,8 @@ Customer-Aware Split (Leak-Free):
 
 ---
 
-## 7. Near-Duplicate Detection & Contamination Analysis
+<a id="7-near-duplicate-detection-and-contamination-analysis"></a>
+## 7. Near-Duplicate Detection and Contamination Analysis
 
 Implemented in [`src/similarity.py`](src/similarity.py), this component audits lexical and semantic near-duplicates using pairwise TF-IDF cosine similarity matrices.
 
@@ -277,7 +284,8 @@ TF-IDF Cosine Similarity:   0.1573  <-- Missed by TF-IDF (Threshold >= 0.85)
 
 ---
 
-## 8. Category Classification Models & Probability Calibration
+<a id="8-category-classification-models-and-probability-calibration"></a>
+## 8. Category Classification Models and Probability Calibration
 
 Implemented and trained in [`src/train.py`](src/train.py), this pipeline establishes production-grade classifiers to categorize player tickets into 10 operational domains using customer-aware splitting.
 
@@ -350,7 +358,8 @@ In customer support classification, **Macro F1** is strictly superior to raw acc
 
 ---
 
-## 9. Priority Prediction Models & Feature Fusion
+<a id="9-priority-prediction-models-and-feature-fusion"></a>
+## 9. Priority Prediction Models and Feature Fusion
 
 Implemented and trained in [`src/train.py`](src/train.py), this pipeline establishes an automated urgency triage classifier (`HIGH`, `MEDIUM`, `LOW`) using feature fusion, dimensional compression, and GPU-accelerated gradient boosting under strict pre-resolution constraints.
 
@@ -416,7 +425,8 @@ Legend:
 
 ---
 
-## 10. Similar Ticket Retrieval Index & Semantic Search
+<a id="10-similar-ticket-retrieval-index-and-semantic-search"></a>
+## 10. Similar Ticket Retrieval Index and Semantic Search
 
 Implemented in [`src/similarity.py`](src/similarity.py), this engine deploys a semantic nearest-neighbor retrieval index powered by dense transformer embeddings running on CUDA GPU. It allows customer support agents to retrieve the 5 most historically similar tickets for any incoming player complaint, bridging the lexical vocabulary gap discovered during duplicate analysis.
 
@@ -496,7 +506,8 @@ The index was tested against 3 diverse player complaints spanning billing, techn
 
 ---
 
-## 11. Model Explainability Engine & Feature Attribution
+<a id="11-model-explainability-engine-and-feature-attribution"></a>
+## 11. Model Explainability Engine and Feature Attribution
 
 Implemented in [`src/evaluate.py`](src/evaluate.py), this engine provides transparent, auditable feature attributions explaining why the category classifier assigned a specific label to an incoming player ticket. It bridges the gap between black-box inference and operational trust for support triage agents.
 
@@ -585,7 +596,8 @@ The explainability engine was evaluated across 4 diverse customer complaints spa
 
 ---
 
-## 12. Confidence Calibration & Out-of-Distribution (OOD) Detection
+<a id="12-confidence-calibration-and-out-of-distribution-detection"></a>
+## 12. Confidence Calibration and Out-of-Distribution Detection
 
 Implemented in [`src/evaluate.py`](src/evaluate.py), this audit validates that the category model's predicted probability confidences faithfully reflect true empirical accuracies, and establishes an automated Out-of-Distribution (OOD) guardrail to intercept anomalous or non-gaming player submissions.
 
@@ -652,6 +664,7 @@ Setting rejection threshold tau = 0.50 provides a clean separation boundary:
 
 ---
 
+<a id="13-fastapi-rest-inference-service"></a>
 ## 13. FastAPI REST Inference Service
 
 ### 13.1 Architecture & Design Principles
@@ -773,7 +786,8 @@ FastAPI automatically compiles and exposes interactive API documentation:
 
 ---
 
-## 14. System Limitations & Failure Modes
+<a id="14-system-limitations-and-failure-modes"></a>
+## 14. System Limitations and Failure Modes
 
 While the system delivers high accuracy, real-time latency, calibrated confidence, and interpretability, any production triage deployment must account for architectural boundaries and potential failure modes:
 
@@ -800,7 +814,8 @@ While the system delivers high accuracy, real-time latency, calibrated confidenc
 
 ---
 
-## 15. Project Conclusion & Learning Checkpoints
+<a id="15-project-conclusion-and-learning-checkpoints"></a>
+## 15. Project Conclusion and Learning Checkpoints
 
 The **Riot Games Smart Customer Support Intelligence System** demonstrates an end-to-end, leak-free, mathematically verified machine learning engineering lifecycle. Over the complete machine learning lifecycle, the project transitioned from raw procedural data generation to a high-throughput, GPU-accelerated REST inference service.
 
