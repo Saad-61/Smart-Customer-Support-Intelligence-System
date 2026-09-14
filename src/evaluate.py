@@ -751,6 +751,7 @@ def investigate_calibration(
     class_labels: list[str],
     raw_proba: np.ndarray | None = None,
     n_bins: int = 10,
+    strategy: str = "quantile",
 ) -> dict[str, Any]:
     """
     Investigate confidence calibration across all categories.
