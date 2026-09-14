@@ -7,23 +7,23 @@
 ---
 
 ## Table of Contents
-1. [Executive Summary & System Architecture](#1-executive-summary--system-architecture)
-2. [Module 0: Dataset Generation & Ground Truth Formulation](#2-module-0-dataset-generation--ground-truth-formulation)
-3. [Module 1: Data Cleaning & Preprocessing Audit](#3-module-1-data-cleaning--preprocessing-audit)
-4. [Module 2: Exploratory Data Analysis & Empirical Insights](#4-module-2-exploratory-data-analysis--empirical-insights)
-5. [Module 3: Feature Engineering & Preprocessing Architecture](#5-module-3-feature-engineering--preprocessing-architecture)
-6. [Module 4: Leakage Analysis & Evaluation Strategy](#6-module-4-leakage-analysis--evaluation-strategy)
-7. [Module 5: Near-Duplicate Detection & Contamination Analysis](#7-module-5-near-duplicate-detection--contamination-analysis)
-8. [Module 6: Category Classification Models & Probability Calibration](#8-module-6-category-classification-models--probability-calibration)
-9. [Module 7: Priority Prediction Models & Feature Fusion](#9-module-7-priority-prediction-models--feature-fusion)
-10. [Module 8: Similar Ticket Retrieval Index & Semantic Search](#10-module-8-similar-ticket-retrieval-index--semantic-search)
-11. [Module 9: Model Explainability Engine & Feature Attribution](#11-module-9-model-explainability-engine--feature-attribution)
-12. [Module 10: Confidence Calibration & Out-of-Distribution Detection](#12-module-10-confidence-calibration--out-of-distribution-detection)
+1. [Executive Summary & System Architecture](#1-executive-summary-system-architecture)
+2. [Module 0: Dataset Generation & Ground Truth Formulation](#2-module-0-dataset-generation-ground-truth-formulation)
+3. [Module 1: Data Cleaning & Preprocessing Audit](#3-module-1-data-cleaning-preprocessing-audit)
+4. [Module 2: Exploratory Data Analysis & Empirical Insights](#4-module-2-exploratory-data-analysis-empirical-insights)
+5. [Module 3: Feature Engineering & Preprocessing Architecture](#5-module-3-feature-engineering-preprocessing-architecture)
+6. [Module 4: Leakage Analysis & Evaluation Strategy](#6-module-4-leakage-analysis-evaluation-strategy)
+7. [Module 5: Near-Duplicate Detection & Contamination Analysis](#7-module-5-near-duplicate-detection-contamination-analysis)
+8. [Module 6: Category Classification Models & Probability Calibration](#8-module-6-category-classification-models-probability-calibration)
+9. [Module 7: Priority Prediction Models & Feature Fusion](#9-module-7-priority-prediction-models-feature-fusion)
+10. [Module 8: Similar Ticket Retrieval Index & Semantic Search](#10-module-8-similar-ticket-retrieval-index-semantic-search)
+11. [Module 9: Model Explainability Engine & Feature Attribution](#11-module-9-model-explainability-engine-feature-attribution)
+12. [Module 10: Confidence Calibration & Out-of-Distribution (OOD) Detection](#12-module-10-confidence-calibration-out-of-distribution-ood-detection)
 13. [Module 11: FastAPI REST Inference Service](#13-fastapi-rest-inference-service-module-11)
-14. [System Limitations & Failure Modes](#14-system-limitations--failure-modes)
-15. [Future Improvements & Production Roadmap (v2 Vision)](#15-future-improvements--production-roadmap-v2-vision)
-16. [Project Conclusion & Learning Checkpoints](#16-project-conclusion--learning-checkpoints)
-17. [Final Project Status & Deliverables Summary](#17-final-project-status--deliverables-summary)
+14. [System Limitations & Failure Modes](#14-system-limitations-failure-modes)
+15. [Future Improvements & Production Roadmap (v2 Vision)](#15-future-improvements-production-roadmap-v2-vision)
+16. [Project Conclusion & Learning Checkpoints](#16-project-conclusion-learning-checkpoints)
+17. [Final Project Status & Deliverables Summary](#17-final-project-status-deliverables-summary)
 
 ---
 
@@ -67,7 +67,7 @@ This report provides an in-depth technical audit, empirical evaluation, and arch
 ## 2. Module 0: Dataset Generation & Ground Truth Formulation
 
 ### 2.1 Synthetic Data Generation Strategy
-To provide realistic operational telemetry without compromising private player data, a domain-accurate synthetic data generator was implemented in [`src/generate_dataset.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/generate_dataset.py). The generator synthesizes realistic distributions based on real-world support ticket mechanics:
+To provide realistic operational telemetry without compromising private player data, a domain-accurate synthetic data generator was implemented in [`src/generate_dataset.py`](src/generate_dataset.py). The generator synthesizes realistic distributions based on real-world support ticket mechanics:
 
 - **Volume:** 3,000 base tickets synthesized from 493 unique simulated customers.
 - **Power User Concentration:** A power-law customer behavior is modeled where a small subset (~5%) of "chronic complainers" or heavy users accounts for ~25% of overall ticket traffic.
@@ -88,7 +88,7 @@ To replicate real-world data collection failures, intentional data quality defec
 
 ## 3. Module 1: Data Cleaning & Preprocessing Audit
 
-Implemented in [`src/preprocessing.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/preprocessing.py), this module audits anomalies, repairs corrupt records, normalizes NLP text, and extracts temporal signals.
+Implemented in [`src/preprocessing.py`](src/preprocessing.py), this module audits anomalies, repairs corrupt records, normalizes NLP text, and extracts temporal signals.
 
 ### 3.1 Data Quality Audit Findings
 
@@ -103,15 +103,15 @@ Implemented in [`src/preprocessing.py`](file:///d:/work/Smart%20Customer%20Suppo
 | **Missing `resolution_time`** | 56 | 1.81% | **Preserved / Median** | Left `NaN` for unresolved tickets (valid business state); imputed with column median for resolved tickets. |
 
 ### 3.2 Dataset Pipeline Transitions
-- **Raw Input (`data/raw/tickets.csv`):** 3,090 rows $\times$ 10 columns
-- **Clean Output (`data/processed/tickets_clean.csv`):** 2,867 rows $\times$ 16 columns
+- **Raw Input (`data/raw/tickets.csv`):** 3,090 rows × 10 columns
+- **Clean Output (`data/processed/tickets_clean.csv`):** 2,867 rows × 16 columns
 - **New Engineered Attributes:** `hour_of_day`, `day_of_week`, `month`, `text_length`, `word_count`, `is_near_duplicate`.
 
 ---
 
 ## 4. Module 2: Exploratory Data Analysis & Empirical Insights
 
-Implemented and executed in [`notebooks/exploration.ipynb`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/notebooks/exploration.ipynb), 10 comprehensive analytical visualizations were conducted to diagnose class representation, player behavior, text length distributions, and operational temporal spikes.
+Implemented and executed in [`notebooks/exploration.ipynb`](notebooks/exploration.ipynb), 10 comprehensive analytical visualizations were conducted to diagnose class representation, player behavior, text length distributions, and operational temporal spikes.
 
 ### Figure 1: Category Frequency Distribution
 ![Figure 1: Category Distribution](reports/figures/01_category_distribution.png)
@@ -143,7 +143,7 @@ Implemented and executed in [`notebooks/exploration.ipynb`](file:///d:/work/Smar
 
 ### Figure 5: Text Length vs. Resolution Time Scatter
 ![Figure 5: Text Length vs Resolution Time](reports/figures/05_text_length_vs_resolution_time.png)
-- **Empirical Observation:** Resolution time exhibits little to no correlation with text length ($R^2 \approx 0.01$). However, color-coding by priority reveals vertical clustering: `HIGH` priority tickets resolve rapidly ($< 15$ hours), whereas `LOW` priority tickets stretch to 80+ hours.
+- **Empirical Observation:** Resolution time exhibits little to no correlation with text length (R² ≈ 0.01). However, color-coding by priority reveals vertical clustering: `HIGH` priority tickets resolve rapidly (< 15 hours), whereas `LOW` priority tickets stretch to 80+ hours.
 - **ML Implication:** Text length has zero predictive power for resolution duration. The strong stratification between priority and resolution duration confirms that `resolution_time` is a direct consequence of priority triage—using it as a predictive input would be fatal target leakage.
 
 ---
@@ -185,7 +185,7 @@ Implemented and executed in [`notebooks/exploration.ipynb`](file:///d:/work/Smar
 
 ## 5. Module 3: Feature Engineering & Preprocessing Architecture
 
-Implemented in [`src/features.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/features.py), this module establishes modular, leak-free feature transformation pipelines using scikit-learn.
+Implemented in [`src/features.py`](src/features.py), this module establishes modular, leak-free feature transformation pipelines using scikit-learn.
 
 ### 5.1 Pipeline Structure
 ```python
@@ -210,7 +210,7 @@ To ensure zero data leakage from validation/test sets:
 
 ## 6. Module 4: Leakage Analysis & Evaluation Strategy
 
-Implemented in [`src/evaluate.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/evaluate.py), this module establishes an evaluation methodology that prevents data contamination and benchmarks generalization on completely unseen players.
+Implemented in [`src/evaluate.py`](src/evaluate.py), this module establishes an evaluation methodology that prevents data contamination and benchmarks generalization on completely unseen players.
 
 ### 6.1 Data Leakage Experiment Results (`target='priority'`)
 To prove how post-outcome variables deceptively distort model performance, two identical `LogisticRegression` models were trained:
@@ -253,11 +253,11 @@ Customer-Aware Split (Leak-Free):
 
 ## 7. Module 5: Near-Duplicate Detection & Contamination Analysis
 
-Implemented in [`src/similarity.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/similarity.py), this module audits lexical and semantic near-duplicates using pairwise TF-IDF cosine similarity matrices.
+Implemented in [`src/similarity.py`](src/similarity.py), this module audits lexical and semantic near-duplicates using pairwise TF-IDF cosine similarity matrices.
 
-### 7.1 Pairwise Redundancy Audit ($\ge 0.85$ Cosine Similarity)
+### 7.1 Pairwise Redundancy Audit (>= 0.85 Cosine Similarity)
 - **Total Clean Tickets Analyzed:** 2,867 tickets
-- **Total Upper-Triangle Near-Duplicate Pairs:** 56,872 pairs meeting $\ge 0.85$ similarity
+- **Total Upper-Triangle Near-Duplicate Pairs:** 56,872 pairs meeting >= 0.85 similarity
   - **Same-Customer Duplicates:** 257 pairs (0.5%) — repeat tickets from the same player.
   - **Cross-Customer Duplicates:** 56,615 pairs (99.5%) — identical template instances submitted by different players.
 
@@ -273,7 +273,7 @@ TF-IDF Cosine Similarity:   0.1573  <-- Missed by TF-IDF (Threshold >= 0.85)
 ```
 
 #### Key Technical Insight:
-- **TF-IDF Strengths:** Detects near-identical template re-use and boilerplates with varying account tags (scores $>0.95$).
+- **TF-IDF Strengths:** Detects near-identical template re-use and boilerplates with varying account tags (scores > 0.95).
 - **TF-IDF Failure Mode:** Completely misses paraphrased complaints where synonymous words express identical intent (*"charged"* vs. *"billed"*, *"order"* vs. *"purchase"*), yielding an unacceptably low similarity of **`0.1573`**.
 - **System Evolution:** This empirical limitation justifies upgrading to **Sentence Transformers** (`all-MiniLM-L6-v2`) in Module 8 for dense semantic retrieval.
 
@@ -281,13 +281,13 @@ TF-IDF Cosine Similarity:   0.1573  <-- Missed by TF-IDF (Threshold >= 0.85)
 
 ## 8. Module 6: Category Classification Models & Probability Calibration
 
-Implemented and trained in [`src/train.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/train.py), this module establishes production-grade classifiers to categorize player tickets into 10 operational domains using customer-aware splitting.
+Implemented and trained in [`src/train.py`](src/train.py), this module establishes production-grade classifiers to categorize player tickets into 10 operational domains using customer-aware splitting.
 
 ### 8.1 Model Architecture & Calibration Strategy
 Two primary architectures were evaluated under identical customer-aware partitions:
 1. **Model A (Baseline):** `TF-IDF (15k unigram/bigrams) + LogisticRegression(class_weight="balanced")` with default Softmax probabilities.
 2. **Model B (Production Recommended):** `TF-IDF (15k unigram/bigrams) + LinearSVC(class_weight="balanced")` wrapped in `CalibratedClassifierCV(cv=3, method="sigmoid")`.
-   - *Technical Rationale for Platt Scaling:* Linear Support Vector Classifiers output signed geometric distances from the decision hyperplane rather than posterior probabilities. Wrapping with 3-fold cross-validated sigmoid calibration fits logistic regression curves directly to decision function margins, transforming unconstrained distances into calibrated probabilities $\sum P(y=c) = 1.0$.
+   - *Technical Rationale for Platt Scaling:* Linear Support Vector Classifiers output signed geometric distances from the decision hyperplane rather than posterior probabilities. Wrapping with 3-fold cross-validated sigmoid calibration fits logistic regression curves directly to decision function margins, transforming unconstrained distances into calibrated probabilities sum P(y = c) = 1.0.
 
 ### 8.2 Compute & Hardware Acceleration Environment
 - **GPU Accelerator:** NVIDIA GeForce RTX 3050 6GB Laptop GPU (Auto-detected)
@@ -343,7 +343,7 @@ Class Index / Label                0       1       2       3       4       5    
 In customer support classification, **Macro F1** is strictly superior to raw accuracy:
 1. **The Masking Effect of Accuracy:** In an imbalanced queue where majority issues (bans/RP) represent 80% of tickets, a naive model that predicts majority classes could achieve 80% accuracy while failing 100% on rare but severe issues (e.g., *Server Latency / Lag*).
 2. **Unweighted Class Representation:** Macro F1 computes the unweighted arithmetic mean of per-class F1-scores:
-   $$\text{Macro F1} = \frac{1}{K} \sum_{k=1}^K F1_k$$
+   `Macro F1 = (1 / K) * Σ_{k=1..K} F1_k`
    It weights the 8 test tickets of *Server Latency* with the exact same importance as the 124 tickets of *Account Bans*, ensuring rare operational outages are never ignored.
 
 ### 8.7 Serialized Artifacts
@@ -354,13 +354,13 @@ In customer support classification, **Macro F1** is strictly superior to raw acc
 
 ## 9. Module 7: Priority Prediction Models & Feature Fusion
 
-Implemented and trained in [`src/train.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/train.py), this module establishes an automated urgency triage classifier (`HIGH`, `MEDIUM`, `LOW`) using feature fusion, dimensional compression, and GPU-accelerated gradient boosting under strict pre-resolution constraints.
+Implemented and trained in [`src/train.py`](src/train.py), this module establishes an automated urgency triage classifier (`HIGH`, `MEDIUM`, `LOW`) using feature fusion, dimensional compression, and GPU-accelerated gradient boosting under strict pre-resolution constraints.
 
 ### 9.1 Multi-Modal Feature Fusion & TruncatedSVD Architecture
 Predicting ticket urgency requires fusing free-form customer complaints with game titles and operational customer metadata. However, standard tree-based gradient boosting algorithms degrade severely when fed tens of thousands of sparse text features.
 
 To resolve this, an engineered dimensionality reduction pipeline was implemented:
-1. **Text Compression via TruncatedSVD (Latent Semantic Analysis):** `TF-IDF (5,000 unigrams/bigrams)` $\rightarrow$ `TruncatedSVD(n_components=50)`. Compresses textual variation into 50 continuous orthogonal semantic dimensions.
+1. **Text Compression via TruncatedSVD (Latent Semantic Analysis):** `TF-IDF (5,000 unigrams/bigrams)` -> `TruncatedSVD(n_components=50)`. Compresses textual variation into 50 continuous orthogonal semantic dimensions.
 2. **Categorical Encoding:** One-hot encoding game titles (`product`) with an unknown-value fallback (5 binary columns).
 3. **Operational Metadata:** Imputed and standardized customer history counts (`previous_tickets`) and cyclic temporal signals (`hour_of_day`, `day_of_week`, `month`) (4 numerical columns).
 4. **Total Feature Space:** **59 dense continuous features** fed into tree ensembles.
@@ -410,7 +410,7 @@ Legend:
 ### 9.6 Educational Breakdown: Why Gradient Boosting Outperforms Pure Linear NLP on Mixed Data
 1. **Heterogeneous Feature Scaling:** Linear models (e.g. Logistic Regression) assume linear additivity across features and are sensitive to relative feature scales. In priority prediction, features combine dense text vectors, binary indicators (game titles), and unbounded counts (`previous_tickets`).
 2. **Non-Linear Decision Boundaries:** Gradient boosting builds decision trees via recursive orthogonal splits. A tree can easily learn threshold rules like:
-   $$\text{IF } \text{product} = \text{'Valorant'} \text{ AND } \text{previous\_tickets} > 5 \text{ AND } \text{text\_SVD\_component\_2} < -0.15 \rightarrow \text{HIGH Priority}$$
+   `IF product = 'Valorant' AND previous_tickets > 5 AND text_SVD_component_2 < -0.15 -> HIGH Priority`
 3. **Weak Text Correlation:** As proven in exploratory analysis, priority correlates weakly with text alone. By combining latent text representations with operational metadata, XGBoost captures non-linear interactions that linear models miss completely.
 
 ### 9.7 Serialized Artifacts
@@ -420,17 +420,17 @@ Legend:
 
 ## 10. Module 8: Similar Ticket Retrieval Index & Semantic Search
 
-Implemented in [`src/similarity.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/similarity.py), this module deploys a semantic nearest-neighbor retrieval engine powered by dense transformer embeddings running on CUDA GPU. It allows customer support agents to retrieve the 5 most historically similar tickets for any incoming player complaint, bridging the lexical vocabulary gap discovered in Module 5.
+Implemented in [`src/similarity.py`](src/similarity.py), this module deploys a semantic nearest-neighbor retrieval engine powered by dense transformer embeddings running on CUDA GPU. It allows customer support agents to retrieve the 5 most historically similar tickets for any incoming player complaint, bridging the lexical vocabulary gap discovered in Module 5.
 
 ### 10.1 Dense Semantic Embeddings Architecture
 Unlike lexical methods that require exact word matches, dense sentence embeddings project variable-length complaints into a continuous 384-dimensional latent semantic manifold where synonymous phrases map to geometrically proximal coordinates.
 
 - **Transformer Backbone:** `all-MiniLM-L6-v2` (6-layer, 384-dimensional MiniLM transformer, ~80 MB footprint).
 - **GPU Accelerator:** NVIDIA GeForce RTX 3050 6GB Laptop GPU (`device="cuda"`).
-- **Embedding Matrix:** $\mathbf{E} \in \mathbb{R}^{2867 \times 384}$, single-precision `float32`.
+- **Embedding Matrix:** Matrix E with shape (2,867 × 384), single-precision `float32`.
 - **Inference Throughput:** Processed 2,867 tickets in 45 batches (batch size 64) in **1.23 seconds** (throughput: **36.49 batches/second** / **2,330 tickets/second**).
-- **L2 Unit Normalization:** Embeddings are normalized such that $\|\mathbf{e}_i\|_2 = 1$. Consequently, cosine similarity reduces to an ultra-fast matrix-vector inner dot product:
-  $$\text{CosineSimilarity}(\mathbf{e}_i, \mathbf{q}) = \mathbf{e}_i \cdot \mathbf{q}$$
+- **L2 Unit Normalization:** Embeddings are normalized such that ||e_i||_2 = 1. Consequently, cosine similarity reduces to an ultra-fast matrix-vector inner dot product:
+  `CosineSimilarity(e_i, q) = e_i • q`
   Retrieval across all 2,867 historical records executes in **under 1 millisecond**.
 
 ### 10.2 Empirical Demonstration Results
@@ -484,7 +484,7 @@ The index was tested against 3 diverse player complaints spanning billing, techn
 | **Paraphrasing Score** | **0.1573** ("charged twice" vs "billed twice") | **0.9363** ("freezes and crashes" vs "crashes") | TF-IDF misses synonymous player complaints; Transformers bridge vocabulary gaps. |
 | **Negation & Context** | Unaware of word order or negation | Self-attention mechanism captures context | Preserves distinction between "cannot log in" vs "can log in". |
 | **Index Size** | 70 KB to 500 KB | 4.33 MB (`models/retrieval_index.joblib`) | Highly compact and loads instantly into memory during API startup. |
-| **Search Latency** | $\sim 5\,\mu\text{s}$ (sparse matrix multiply) | $\sim 15\,\text{ms}$ query encoding + $0.2\,\text{ms}$ dot product | Suitable for sub-100ms real-time REST API responses. |
+| **Search Latency** | ~5 µs (sparse matrix multiply) | ~15 ms query encoding + 0.2 ms dot product | Suitable for sub-100ms real-time REST API responses. |
 
 ### 10.4 Limitations & Architectural Trade-offs
 1. **Domain & Gaming Slang Gaps:** Pre-trained on generic web corpora (Wikipedia, Reddit, news), `all-MiniLM-L6-v2` may misjudge specialized game telemetry or Riot gaming jargon (*"inting"*, *"smurf"*, *"FF at 15"*, *"MMR tanked"*, *"Vanguard error 57"*). Domain-specific fine-tuning or hybrid lexical-dense retrieval (BM25 + Dense reranking) would improve edge-case precision.
@@ -500,23 +500,23 @@ The index was tested against 3 diverse player complaints spanning billing, techn
 
 ## 11. Module 9: Model Explainability Engine & Feature Attribution
 
-Implemented in [`src/evaluate.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/evaluate.py), this module provides transparent, auditable feature attributions explaining why the category classifier assigned a specific label to an incoming player ticket. It bridges the gap between black-box inference and operational trust for support triage agents.
+Implemented in [`src/evaluate.py`](src/evaluate.py), this module provides transparent, auditable feature attributions explaining why the category classifier assigned a specific label to an incoming player ticket. It bridges the gap between black-box inference and operational trust for support triage agents.
 
 ### 11.1 Mathematical Formulation: Platt-Scaled Linear Decision Hyperplanes
 Our production category model is a `LinearSVC` encapsulated inside a 3-fold `CalibratedClassifierCV(method="sigmoid")`. While Platt scaling computes non-linear sigmoid probability calibrations over distance margins, the underlying decision boundaries remain linear hyperplanes.
 
 1. **Coefficient Averaging Across Calibration Folds:**
-   Each cross-validation fold $k \in \{1, 2, 3\}$ fits an independent `LinearSVC` estimator yielding weight vector $\mathbf{w}_c^{(k)}$ for class $c$. The consensus class hyperplane is obtained via ensemble averaging:
-   $$\bar{\mathbf{w}}_c = \frac{1}{K}\sum_{k=1}^K \mathbf{w}_c^{(k)} \quad \in \mathbb{R}^{D}$$
-   where $D = 1,836$ represents the total dimensionality across text unigrams/bigrams, one-hot product indicators, and metadata features.
+   Each cross-validation fold k fits an independent `LinearSVC` estimator yielding weight vector w_c^(k) for class c. The consensus class hyperplane is obtained via ensemble averaging across folds:
+   `w_bar_c = (1 / K) * Σ_{k=1..K} w_c^(k)`
+   where D = 1,836 represents the total dimensionality across text unigrams/bigrams, one-hot product indicators, and metadata features.
 
 2. **Local Feature Attribution (Instance Contribution):**
-   For a specific incoming ticket with transformed feature vector $\mathbf{x} = [x_1, x_2, \dots, x_D]^\top$, the additive push toward predicted class $c$ by feature $j$ is defined as:
-   $$\text{Contribution}_j = x_j \cdot \bar{w}_{c, j}$$
-   Features with $x_j > 0$ and $\bar{w}_{c, j} > 0$ represent terms typed by the player that directly propelled the model toward that classification.
+   For a specific incoming ticket with transformed feature vector x = [x_1, x_2, ..., x_D]^T, the additive push toward predicted class c by feature j is defined as:
+   `Contribution_j = x_j * w_bar_{c, j}`
+   Features with x_j > 0 and w_bar_{c, j} > 0 represent terms typed by the player that directly propelled the model toward that classification.
 
 3. **Global Salience Fallback:**
-   If a short or non-standard ticket contains fewer than $N$ active vocabulary terms with positive weights, the engine backfills the explanation using top global class weights ($\bar{w}_{c, j} > 0$), providing context on what the model considers defining characteristics of that category.
+   If a short or non-standard ticket contains fewer than N active vocabulary terms with positive weights, the engine backfills the explanation using top global class weights (w_bar_{c, j} > 0), providing context on what the model considers defining characteristics of that category.
 
 ### 11.2 Empirical Demonstration Results
 The explainability engine was evaluated across 4 diverse customer complaints spanning distinct operational categories:
@@ -525,7 +525,7 @@ The explainability engine was evaluated across 4 diverse customer complaints spa
 - **Complaint:** *"I received a 14-day suspension for allegedly using scripts. I have never used an unauthorized program."* (Product: *League of Legends*)
 - **Predicted Category:** `Account Ban / Suspension` (Confidence: **97.4%**)
 
-| Rank | Feature Token | Class Weight ($\bar{w}_c$) | Local Contribution ($x_j \cdot \bar{w}_c$) | Interpretation |
+| Rank | Feature Token | Class Weight (w_bar_c) | Local Contribution (x_j * w_bar_c) | Interpretation |
 | :---: | :--- | :---: | :---: | :--- |
 | **1** | `"suspension"` | **+0.5090** | **+0.0977** | Core disciplinary term directly indicating an account penalty. |
 | **2** | `"have never"` | **+0.5150** | **+0.0954** | Classic innocence assertion bigram strongly prevalent in appeals. |
@@ -537,7 +537,7 @@ The explainability engine was evaluated across 4 diverse customer complaints spa
 - **Complaint:** *"I purchased 1350 RP but my credit card was charged twice and no coins appeared in my account."* (Product: *League of Legends*)
 - **Predicted Category:** `Missing RP / Purchase Issue` (Confidence: **98.5%**)
 
-| Rank | Feature Token | Class Weight ($\bar{w}_c$) | Local Contribution ($x_j \cdot \bar{w}_c$) | Interpretation |
+| Rank | Feature Token | Class Weight (w_bar_c) | Local Contribution (x_j * w_bar_c) | Interpretation |
 | :---: | :--- | :---: | :---: | :--- |
 | **1** | `"charged"` | **+0.9277** | **+0.1524** | Dominant billing transaction action token. |
 | **2** | `"rp"` | **+0.8508** | **+0.1400** | Riot Points in-game currency acronym. |
@@ -549,7 +549,7 @@ The explainability engine was evaluated across 4 diverse customer complaints spa
 - **Complaint:** *"Game freezes and crashes during champion select every time with a fatal directx error."* (Product: *Valorant*)
 - **Predicted Category:** `Client Bug / Crash` (Confidence: **60.9%**)
 
-| Rank | Feature Token | Class Weight ($\bar{w}_c$) | Local Contribution ($x_j \cdot \bar{w}_c$) | Interpretation |
+| Rank | Feature Token | Class Weight (w_bar_c) | Local Contribution (x_j * w_bar_c) | Interpretation |
 | :---: | :--- | :---: | :---: | :--- |
 | **1** | `"error"` | **+0.4884** | **+0.1270** | Primary technical crash diagnostic term. |
 | **2** | `"champion select"`| **+0.2699** | **+0.0807** | Game phase token where client hangs frequently occur. |
@@ -561,7 +561,7 @@ The explainability engine was evaluated across 4 diverse customer complaints spa
 - **Complaint:** *"Constant high ping and severe packet loss every evening making ranked games unplayable."* (Product: *League of Legends*)
 - **Predicted Category:** `Server Latency / Lag` (Confidence: **65.2%**)
 
-| Rank | Feature Token | Class Weight ($\bar{w}_c$) | Local Contribution ($x_j \cdot \bar{w}_c$) | Interpretation |
+| Rank | Feature Token | Class Weight (w_bar_c) | Local Contribution (x_j * w_bar_c) | Interpretation |
 | :---: | :--- | :---: | :---: | :--- |
 | **1** | `"unplayable"` | **+0.4049** | **+0.1560** | Extreme performance degradation sentiment. |
 | **2** | `"packet"` | **+0.4049** | **+0.1560** | Network transmission unit token. |
@@ -571,63 +571,67 @@ The explainability engine was evaluated across 4 diverse customer complaints spa
 
 ### 11.3 Architectural Comparison: Linear Feature Attribution vs. SHAP Shapley Values
 
-| Evaluation Dimension | Linear Feature Attribution ($x_j \cdot \bar{w}_j$) | SHAP (SHapley Additive exPlanations) | Practical Production Trade-off |
+| Evaluation Dimension | Linear Feature Attribution (x_j * w_bar_j) | SHAP (SHapley Additive exPlanations) | Practical Production Trade-off |
 | :--- | :--- | :--- | :--- |
 | **Theoretical Foundation** | First-order linear projection onto decision hyperplane | Cooperative Game Theory (Shapley values) | Linear is exact and native for linear models; SHAP handles arbitrary non-linearities. |
-| **Computation Latency** | **$< 0.1\,\text{ms}$** (vector element-wise multiply) | $\sim 50\text{--}500\,\text{ms}$ (sampling feature permutations) | **Linear attribution is $500\times$ faster**, essential for low-latency REST APIs. |
+| **Computation Latency** | **< 0.1 ms** (vector element-wise multiply) | ~50-500 ms (sampling feature permutations) | **Linear attribution is 500x faster**, essential for low-latency REST APIs. |
 | **Interaction Effects** | Assumes feature independence (no interaction modeling) | Captures feature interaction effects via coalition sampling | Linear suffices here because the text pipeline uses LinearSVC; tree models require SHAP. |
-| **Baseline Reference** | Zero feature presence ($x_j = 0$) | Expected model prediction over background distribution | Linear explanations are intuitive for NLP (present words vs. omitted words). |
+| **Baseline Reference** | Zero feature presence (x_j = 0) | Expected model prediction over background distribution | Linear explanations are intuitive for NLP (present words vs. omitted words). |
 
 ### 11.4 Methodological Limitations & Safety Disclosures
 1. **Correlation vs. Causation:** Linear weights indicate statistical co-occurrence within the training dataset, not true causal reasoning. A word like *"ticket"* or *"account"* may carry positive weight simply because it appeared frequently in that category's templates.
 2. **Context Blindness of Bag-of-Words:** TF-IDF unigrams/bigrams cannot parse long-range syntax, sarcasm (*"Great job Riot, the client froze again"*), or complex negations (*"I was NOT banned, my duo partner was"*).
 3. **Explaining Only the Final Classifier:** Coefficients explain the final linear boundary on preprocessed coordinates. They do not explain non-linear preprocessing steps (sublinear logarithmic term frequency scaling or IDF frequency suppression).
 4. **Class Imbalance & Support Artifacts:** Rare categories (e.g. `Server Latency / Lag` with 28 samples) may overfit to idiosyncrasies of specific player vocabulary.
-5. **Hyperplane Globality:** The underlying $\bar{\mathbf{w}}_c$ vectors are global per class. While weighting by $x_j$ pinpoints words in the ticket, it cannot detect non-linear feature threshold interactions.
+5. **Hyperplane Globality:** The underlying w_bar_c vectors are global per class. While weighting by x_j pinpoints words in the ticket, it cannot detect non-linear feature threshold interactions.
 
 ---
 
 ## 12. Module 10: Confidence Calibration & Out-of-Distribution (OOD) Detection
 
-Implemented in [`src/evaluate.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/src/evaluate.py), this module validates that the category model's predicted probability confidences faithfully reflect true empirical accuracies, and establishes an automated Out-of-Distribution (OOD) guardrail to intercept anomalous or non-gaming player submissions.
+Implemented in [`src/evaluate.py`](src/evaluate.py), this module validates that the category model's predicted probability confidences faithfully reflect true empirical accuracies, and establishes an automated Out-of-Distribution (OOD) guardrail to intercept anomalous or non-gaming player submissions.
 
 ### 12.1 The Mathematics of Confidence Calibration & The Calibration Gap
-A classifier is **calibrated** if, among all predictions where the model asserts a confidence score $p$ (e.g. 0.85), the true proportion of correct classifications equals $p$ (85%).
+A classifier is **calibrated** if, among all predictions where the model asserts a confidence score p (e.g. 0.85), the true proportion of correct classifications equals p (85%).
 
 1. **The Linear Margin Distortion:**
    Linear Support Vector Machines optimize geometric margin separation:
-   $$f(\mathbf{x}) = \mathbf{w}^\top \mathbf{x} + b$$
-   The resulting margin score $f(\mathbf{x})$ is a signed Euclidean distance to the decision boundary, **not a probability**. Converting raw margin distances via naive softmax produces distorted, overconfident probabilities because margin distributions vary unpredictably across multi-class boundaries.
+   `f(x) = w^T * x + b`
+   The resulting margin score f(x) is a signed Euclidean distance to the decision boundary, **not a probability**. Converting raw margin distances via naive softmax produces distorted, overconfident probabilities because margin distributions vary unpredictably across multi-class boundaries.
 
 2. **Platt Scaling (Sigmoid Probability Calibration):**
    To transform margins into well-calibrated posterior probabilities, Platt scaling fits a post-hoc logistic regression model over SVM decision scores:
-   $$P(y = 1 \mid f(\mathbf{x})) = \frac{1}{1 + \exp\left(A \cdot f(\mathbf{x}) + B\right)}$$
-   Parameters $A$ and $B$ are estimated using 3-fold cross-validation (`cv=3`) to eliminate in-sample optimistic bias.
+   `P(y = 1 | f(x)) = 1 / (1 + exp(A * f(x) + B))`
+   Parameters A and B are estimated using cross-validation (`cv=5`) to eliminate in-sample optimistic bias.
 
 3. **Brier Score Loss Benchmark:**
    The Brier score measures the mean squared difference between predicted class probabilities and the one-hot binary truth indicator:
-   $$\text{BS} = \frac{1}{N \cdot C} \sum_{i=1}^N \sum_{c=1}^C \left(P(y_{ic}) - \mathbf{1}[y_i = c]\right)^2$$
+   `Brier Score = (1 / (N * C)) * Σ_{i=1..N} Σ_{c=1..C} (P(y_ic) - 1[y_i = c])²`
    Evaluating on the **580 test tickets** submitted by **98 unseen customers** (Customer-Aware Split):
 
 | Metric | Raw Softmax LinearSVC | Platt-Calibrated LinearSVC | Improvement / Impact |
 | :--- | :---: | :---: | :--- |
 | **Mean Brier Score Loss** | **0.035424** | **0.000020** | **99.94% Probability Error Reduction** |
-| **Empirical Alignment** | Severe over/under-confidence | Hugs perfect calibration line ($y = x$) | High-confidence predictions ($\ge 0.90$) are statistically trustworthy. |
+| **Empirical Alignment** | Severe over/under-confidence | Hugs perfect calibration line (y = x) | High-confidence predictions (>= 0.90) are statistically trustworthy. |
 
 ### 12.2 Calibration Visualizations & Reliability Curves
-A publication-grade 2-panel calibration plot was generated and saved to [`reports/figures/11_calibration_curve.png`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/reports/figures/11_calibration_curve.png) (and [`models/calibration_curve.png`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/models/calibration_curve.png)):
+A publication-grade 2-panel calibration plot was generated and saved to [`reports/figures/11_calibration_curve.png`](reports/figures/11_calibration_curve.png) (and [`models/calibration_curve.png`](models/calibration_curve.png)):
 
 ![Figure 11: Confidence Calibration Curves](reports/figures/11_calibration_curve.png)
 
-- **Panel 1 (Overall Calibration):** Contrasts the Platt-calibrated curve against raw softmax and the dashed perfect calibration diagonal ($y = x$). Platt scaling maps empirical fractions of positives directly onto predicted confidences across all probability bins.
-- **Panel 2 (Category-Specific Reliability):** Demonstrates linear reliability curves across representative operational categories (*Account Ban*, *Missing RP*, *Client Bug*, *Server Latency*), confirming that minority classes also achieve near-zero Brier scores ($\le 0.00004$).
+- **Panel 1 (Overall Calibration):** Contrasts the Platt-calibrated curve against raw softmax and the dashed perfect calibration diagonal (y = x). Platt scaling maps empirical fractions of positives directly onto predicted confidences across all probability bins.
+- **Panel 2 (Category-Specific Reliability):** Demonstrates linear reliability curves across representative operational categories (*Account Ban*, *Missing RP*, *Client Bug*, *Server Latency*), confirming that minority classes also achieve near-zero Brier scores (<= 0.00004).
 
 ### 12.3 Out-of-Distribution (OOD) Guardrail Benchmark
 When deployed in a production player support portal, the system inevitably encounters off-domain queries (e.g. weather questions, recipes, internet trivia, or gibberish). Without an OOD detector, a closed-world classifier will forcibly assign an arbitrary category with false certainty.
 
 The OOD guardrail evaluates maximum posterior confidence against an empirical rejection threshold:
-$$\text{OOD Decision} = \begin{cases} \text{Uncertain (Reject / Route to Human)}, & \text{if } \max_c P(y = c \mid \mathbf{x}) < \tau \\ \text{In-Distribution (Accept for Automation)}, & \text{if } \max_c P(y = c \mid \mathbf{x}) \ge \tau \end{cases}$$
-Setting $\tau = 0.50$ provides a clean separation boundary:
+```text
+OOD Decision Rule:
+- Uncertain (Reject / Route to Human)  if max_c P(y = c | x) < tau
+- In-Distribution (Accept Auto-Triage) if max_c P(y = c | x) >= tau
+```
+Setting rejection threshold tau = 0.50 provides a clean separation boundary:
 
 | Query Scenario | Text Input | Max Confidence | Expected Status | OOD Flagged | Benchmark Result |
 | :--- | :--- | :---: | :---: | :---: | :---: |
@@ -640,12 +644,12 @@ Setting $\tau = 0.50$ provides a clean separation boundary:
 
 ### 12.4 Operational Impact for Support Automation
 1. **Tiered Automation Rules:**
-   - **Confidence $\ge 0.85$:** Safe for zero-touch auto-triage, automated macro responses, and instant billing routing.
-   - **Confidence between $0.50$ and $0.85$:** Routed to tier-1 agents with pre-filled category suggestions and explainability tags.
-   - **Confidence $< 0.50$ (OOD / Low Confidence):** Intercepted as `uncertain=True`, tagged as ambiguous/non-standard, and escalated directly to senior human triage.
+   - **Confidence >= 0.85:** Safe for zero-touch auto-triage, automated macro responses, and instant billing routing.
+   - **Confidence between 0.50 and 0.85:** Routed to tier-1 agents with pre-filled category suggestions and explainability tags.
+   - **Confidence < 0.50 (OOD / Low Confidence):** Intercepted as `uncertain=True`, tagged as ambiguous/non-standard, and escalated directly to senior human triage.
 
 ### 12.5 Serialized Artifacts
-- **Calibration Plot:** [`models/calibration_curve.png`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/models/calibration_curve.png) and [`reports/figures/11_calibration_curve.png`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/reports/figures/11_calibration_curve.png) (300 DPI, 2-panel reliability figure).
+- **Calibration Plot:** [`models/calibration_curve.png`](models/calibration_curve.png) and [`reports/figures/11_calibration_curve.png`](reports/figures/11_calibration_curve.png) (300 DPI, 2-panel reliability figure).
 
 ---
 
@@ -710,13 +714,13 @@ Serving machine learning models in a customer-facing production environment requ
   - `calibrated_note: str` (explicitly documents calibration methodology).
   - `similar_tickets: list[SimilarTicket]` (top-3 semantically closest historical tickets).
   - `explanation: list[ExplanationFeature]` (top explanatory features with weights and local contributions).
-  - `uncertain: bool` (out-of-distribution flag triggered when max confidence $< 0.50$).
+  - `uncertain: bool` (out-of-distribution flag triggered when max confidence < 0.50).
   - `processing_time_ms: float` (end-to-end request latency).
 
 ---
 
 ### 13.3 End-to-End Test & Verification Results
-The test suite in [`tests/test_api.py`](file:///d:/work/Smart%20Customer%20Support%20Intelligence%20System/tests/test_api.py) executes 6 verification checks using FastAPI's `TestClient` across CPU and CUDA:
+The test suite in [`tests/test_api.py`](tests/test_api.py) executes 6 verification checks using FastAPI's `TestClient` across CPU and CUDA:
 
 ```
 ================================================================================
@@ -792,7 +796,7 @@ While the system delivers high accuracy, real-time latency, calibrated confidenc
 - **Failure Mode:** Riot Games operates global servers across Korea, Japan, Europe (EUNE/EUW), Latin America, and Brazil. Submissions in Korean, Portuguese, German, or multilingual gaming slang (*"gg ff15"*, *"jungle diff"*, *"smurf"*) may suffer degraded category prediction or trigger false OOD uncertainty flags.
 
 ### 14.5 Concept Drift & Offline Calibration
-- **Calibration Stability:** The Platt scaling parameters ($A$ and $B$) were fitted on a static snapshot of support data.
+- **Calibration Stability:** The Platt scaling parameters (A and B) were fitted on a static snapshot of support data.
 - **Vulnerability:** When a new champion is released, a game balance patch goes live, or an anti-cheat banwave occurs, support ticket topic distributions shift rapidly. If the data distribution drifts, post-hoc calibration curves may become stale, requiring re-calibration audits.
 
 ---
@@ -839,12 +843,12 @@ The **Riot Games Smart Customer Support Intelligence System** demonstrates an en
 | **Module 2** | **Visual Imbalance & Confusion Diagnosis** | Diagnosed long-tail class imbalance (Account Ban at 23.2% vs. Server Lag at 1.0%); established Macro F1 as the primary guiding evaluation metric. |
 | **Module 3** | **Train-Only Transformer Fitting Rule** | Enforced strict `.fit_transform()` on training folds and `.transform()` on test/eval splits inside `ColumnTransformer` to prevent distribution leakage. |
 | **Module 4** | **Target Leakage Mechanics** | Proved +15.90% Macro F1 artificial inflation when post-outcome features (`resolution_time`, `resolved`) were included; established honest customer-aware splitting. |
-| **Module 5** | **Contamination via Near-Duplicates** | Identified 56,872 near-duplicate pairs ($\ge 0.85$ cosine similarity); proved lexical TF-IDF failure on paraphrased text (0.1573 similarity). |
+| **Module 5** | **Contamination via Near-Duplicates** | Identified 56,872 near-duplicate pairs (>= 0.85 cosine similarity); proved lexical TF-IDF failure on paraphrased text (0.1573 similarity). |
 | **Module 6** | **Macro F1 vs. Accuracy on Imbalanced Data** | Trained LinearSVC with Platt scaling; achieved 100% Macro F1 on clean category separation with balanced sample weighting. |
 | **Module 7** | **Gradient Boosting on Heterogeneous Features** | Combined 50 latent semantic text components with one-hot categorical and scaled metadata; trained GPU XGBoost booster. |
 | **Module 8** | **Dense Embeddings vs. Lexical Overlap** | Encoded 2,867 complaints with `all-MiniLM-L6-v2` on NVIDIA RTX 3050 GPU in 1.23s; achieved 0.9363 cosine similarity on paraphrased queries. |
-| **Module 9** | **Model Coefficients vs. Causal Attribution** | Extracted linear hyperplanes across 3 Platt scaling folds; computed local contributions ($x_j \cdot \bar{w}_j$) in $< 0.1\text{ ms}$ for real-time explanations. |
-| **Module 10** | **Confidence vs. Calibrated Probability** | Reduced Brier score loss by 99.94% using Platt scaling; established an OOD rejection boundary at $\tau = 0.50$ for off-domain queries. |
+| **Module 9** | **Model Coefficients vs. Causal Attribution** | Extracted linear hyperplanes across Platt scaling folds; computed local contributions (x_j * w_bar_j) in < 0.1 ms for real-time explanations. |
+| **Module 10** | **Confidence vs. Calibrated Probability** | Reduced Brier score loss by 99.94% using Platt scaling; established an OOD rejection boundary at tau = 0.50 for off-domain queries. |
 | **Module 11** | **Decoupled Training vs. REST Inference** | Built FastAPI service with lifespan context manager; pre-warmed models in `app.state`; achieved sub-30ms multi-task triage latency. |
 | **Module 12** | **Reproducibility & Pinned Environments** | Frozen dependencies in `requirements.txt`; documented system limitations, failure modes, and v2 architectural roadmap. |
 

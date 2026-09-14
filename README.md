@@ -105,7 +105,7 @@ python src/similarity.py --explain-only
 ```
 
 #### Key Module 5 Findings:
-1. **Redundancy Breakdown ($\ge 0.85$ Cosine Similarity):**
+1. **Redundancy Breakdown (>= 0.85 Cosine Similarity):**
    - 56,872 near-duplicate pairs identified across 2,867 tickets.
    - **0.5% Same-Customer:** Prevented from leaking across splits by Module 4's `customer_aware_split`.
    - **99.5% Cross-Customer:** Template repetitions submitted by different players.
@@ -198,9 +198,9 @@ python src/evaluate.py --document-explain-limitations
 ```
 
 #### Key Module 9 Findings:
-- **Decision Hyperplane Consensus:** Averages linear weight vectors across all 3 calibration folds: $\bar{\mathbf{w}}_c = \frac{1}{3}\sum_{k=1}^3 \mathbf{w}_c^{(k)}$.
-- **Local Active Attribution ($x_j \cdot \bar{w}_{c, j}$):** Pinpoints the precise terms in the player's complaint that drove the classification (e.g. *"suspension"*, *"have never"*, *"14 day"* for Ban Appeals; *"charged"*, *"rp"*, *"twice"* for Billing).
-- **Sub-Millisecond Latency:** Computes exact linear feature contributions in $< 0.1\text{ ms}$, $500\times$ faster than permutation-based SHAP, making it ideal for the real-time REST API.
+- **Decision Hyperplane Consensus:** Averages linear weight vectors across calibration folds: `w_bar_c = (1/K) * sum(w_c^(k))`.
+- **Local Active Attribution (x_j * w_bar_c,j):** Pinpoints the precise terms in the player's complaint that drove the classification (e.g. *"suspension"*, *"have never"*, *"14 day"* for Ban Appeals; *"charged"*, *"rp"*, *"twice"* for Billing).
+- **Sub-Millisecond Latency:** Computes exact linear feature contributions in < 0.1 ms, 500x faster than permutation-based SHAP, making it ideal for the real-time REST API.
 
 ---
 
@@ -238,7 +238,7 @@ uvicorn api.app:app --reload --port 8000
 #### API Endpoints:
 - `POST /predict`: Unified multi-task triage endpoint (Category + Platt confidence, Priority + confidence, OOD check, Top-5 feature explanations, Top-3 similar tickets).
 - `POST /similar`: Standalone semantic retrieval endpoint for finding historical similar tickets via CUDA dense embeddings.
-- `POST /explain`: Standalone model explainability endpoint returning salient terms and contributions ($x_j \cdot \bar{w}_j$).
+- `POST /explain`: Standalone model explainability endpoint returning salient terms and contributions (x_j * w_bar_j).
 - `GET /health`: Health and readiness probe reporting loaded models and CUDA GPU acceleration status.
 - `GET /`: API root metadata and documentation links.
 
@@ -292,7 +292,7 @@ The complete end-to-end system analysis is compiled in [`REPORT.md`](REPORT.md) 
 2. Leakage analysis, empirical proof (+15.90% F1 inflation), and customer-aware splitting.
 3. Near-duplicate contamination (56,872 pairs) and TF-IDF vs. Dense Transformer failure modes.
 4. Model evaluation: LinearSVC vs. Logistic Regression, GPU XGBoost priority prediction.
-5. Model explainability via linear hyperplane extraction ($x_j \cdot \bar{w}_j$) in $< 0.1\text{ ms}$.
+5. Model explainability via linear hyperplane extraction (x_j * w_bar_j) in < 0.1 ms.
 6. Probability calibration (99.94% Brier score error reduction) and OOD guardrails.
 7. System limitations (monolingual English, static vector index, lack of client crash dump logs).
 8. Future architectural roadmap (v2 with Qdrant vector DB, LLM response drafting, and multimodal attachments).
