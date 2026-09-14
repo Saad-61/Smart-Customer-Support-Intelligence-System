@@ -70,3 +70,22 @@ desktop.ini
 
 # Internal guides / prompt documentation
 PROJECT_GUIDE.md
+
+# Frontend Web Application (ui)
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+dist-ssr/
+*.local
+.vite/
+*/.vite/
+*.tsbuildinfo
+ui/.env
+ui/.env.*
+!ui/.env.example
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+

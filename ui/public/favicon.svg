@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <rect width="100" height="100" rx="20" fill="#121316"/>
+  <!-- Riot Games Iconic Fist Silhouette in Crimson Red -->
+  <path d="M22 66V43.5L34.5 31H45V66H22Z" fill="#d13639"/>
+  <path d="M47.5 28.5L53 23H63.5V66H47.5V28.5Z" fill="#d13639"/>
+  <path d="M66 23.5L71.5 18H82V66H66V23.5Z" fill="#d13639"/>
+  <path d="M22 69H82V81H22V69Z" fill="#d13639"/>
+  <path d="M18 46L29 35V66H18V46Z" fill="#eb0029" opacity="0.6"/>
+</svg>
