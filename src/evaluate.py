@@ -765,14 +765,17 @@ def investigate_calibration(
         class_labels: List of class names.
         raw_proba: Optional uncalibrated raw softmax probability matrix [N, n_classes].
         n_bins: Number of probability bins (default: 10).
+        strategy: 'quantile' (equal frequency, better) or 'uniform' (equal width).
 
     Returns:
-        Structured dictionary of calibration metrics.
+        Structured dictionary of calibration metrics including Brier loss and ECE.
     """
     y_true_arr = np.array(y_true)
     per_class_results = {}
     cal_brier_list = []
     raw_brier_list = []
+    cal_ece_list = []
+    raw_ece_list = []
 
     for idx, c in enumerate(class_labels):
         y_bin = (y_true_arr == c).astype(int)
@@ -782,11 +785,18 @@ def investigate_calibration(
         cal_brier = float(brier_score_loss(y_bin, prob_c))
         cal_brier_list.append(cal_brier)
 
-        # Calibration curve: strategy='uniform' splits [0, 1] into equal intervals
-        frac_pos, mean_pred = calibration_curve(y_bin, prob_c, n_bins=n_bins, strategy="uniform")
+        # Calibration curve: quantile (equal frequency) with uniform fallback
+        try:
+            frac_pos, mean_pred = calibration_curve(y_bin, prob_c, n_bins=n_bins, strategy=strategy)
+        except ValueError:
+            frac_pos, mean_pred = calibration_curve(y_bin, prob_c, n_bins=n_bins, strategy="uniform")
+
+        cal_ece = float(np.mean(np.abs(frac_pos - mean_pred))) if len(mean_pred) > 0 else 0.0
+        cal_ece_list.append(cal_ece)
 
         class_stat: dict[str, Any] = {
             "calibrated_brier": round(cal_brier, 6),
+            "calibrated_ece": round(cal_ece, 6),
             "fraction_of_positives": [round(float(v), 4) for v in frac_pos],
             "mean_predicted_value": [round(float(v), 4) for v in mean_pred],
         }
@@ -795,23 +805,34 @@ def investigate_calibration(
             raw_p_c = raw_proba[:, idx]
             raw_brier = float(brier_score_loss(y_bin, raw_p_c))
             raw_brier_list.append(raw_brier)
-            raw_frac_pos, raw_mean_pred = calibration_curve(y_bin, raw_p_c, n_bins=n_bins, strategy="uniform")
+            try:
+                raw_frac_pos, raw_mean_pred = calibration_curve(y_bin, raw_p_c, n_bins=n_bins, strategy=strategy)
+            except ValueError:
+                raw_frac_pos, raw_mean_pred = calibration_curve(y_bin, raw_p_c, n_bins=n_bins, strategy="uniform")
+            raw_ece = float(np.mean(np.abs(raw_frac_pos - raw_mean_pred))) if len(raw_mean_pred) > 0 else 0.0
+            raw_ece_list.append(raw_ece)
             class_stat["raw_brier"] = round(raw_brier, 6)
+            class_stat["raw_ece"] = round(raw_ece, 6)
             class_stat["raw_fraction_of_positives"] = [round(float(v), 4) for v in raw_frac_pos]
             class_stat["raw_mean_predicted_value"] = [round(float(v), 4) for v in raw_mean_pred]
 
         per_class_results[c] = class_stat
 
     mean_cal_brier = float(np.mean(cal_brier_list))
+    mean_cal_ece = float(np.mean(cal_ece_list))
     results: dict[str, Any] = {
         "per_class": per_class_results,
         "mean_calibrated_brier": round(mean_cal_brier, 6),
+        "mean_calibrated_ece": round(mean_cal_ece, 6),
+        "strategy": strategy,
         "classes": class_labels,
     }
 
     if raw_proba is not None and len(raw_brier_list) > 0:
         mean_raw_brier = float(np.mean(raw_brier_list))
+        mean_raw_ece = float(np.mean(raw_ece_list))
         results["mean_raw_brier"] = round(mean_raw_brier, 6)
+        results["mean_raw_ece"] = round(mean_raw_ece, 6)
         if mean_raw_brier > 0:
             reduction = (mean_raw_brier - mean_cal_brier) / mean_raw_brier * 100
             results["brier_reduction_pct"] = round(reduction, 2)
@@ -826,12 +847,13 @@ def plot_calibration_curve(
     raw_proba: np.ndarray | None = None,
     save_path: str | Path = "models/calibration_curve.png",
     n_bins: int = 10,
+    strategy: str = "quantile",
 ) -> Path:
     """
-    Generate and save a 2-panel calibration curve figure.
+    Generate and save a 2-panel calibration curve figure using adaptive quantile binning.
 
-    Panel 1: Overall Macro Calibration (Raw Softmax vs. Platt-Calibrated vs. Ideal y=x).
-    Panel 2: Per-class calibration curves for key representative categories.
+    Panel 1: Overall Macro Calibration (Raw Softmax vs. Platt-Calibrated Quantile vs. Uniform Baseline vs. Ideal y=x).
+    Panel 2: Per-class calibration curves for key representative categories using quantile binning.
     """
     out_path = Path(save_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -855,29 +877,51 @@ def plot_calibration_curve(
     y_bin_all_arr = np.array(y_bin_all)
     y_cal_all_arr = np.array(y_cal_all)
 
-    # Raw curve
+    # Raw curve (Quantile)
     if raw_proba is not None:
         y_raw_all_arr = np.array(y_raw_all)
-        raw_frac, raw_mean = calibration_curve(y_bin_all_arr, y_raw_all_arr, n_bins=n_bins, strategy="uniform")
+        try:
+            raw_frac, raw_mean = calibration_curve(y_bin_all_arr, y_raw_all_arr, n_bins=n_bins, strategy=strategy)
+        except ValueError:
+            raw_frac, raw_mean = calibration_curve(y_bin_all_arr, y_raw_all_arr, n_bins=n_bins, strategy="uniform")
         raw_brier = brier_score_loss(y_bin_all_arr, y_raw_all_arr)
+        raw_ece = float(np.mean(np.abs(raw_frac - raw_mean))) * 100 if len(raw_mean) > 0 else 0.0
         ax1.plot(
-            raw_mean, raw_frac, "s--", color="#d9534f", label=f"Raw Softmax (Brier: {raw_brier:.4f})", linewidth=1.8, markersize=6
+            raw_mean, raw_frac, "s--", color="#d9534f",
+            label=f"Raw Softmax (Brier: {raw_brier:.4f}, ECE: {raw_ece:.1f}%)",
+            linewidth=1.8, markersize=6
         )
 
-    # Platt-calibrated curve
-    cal_frac, cal_mean = calibration_curve(y_bin_all_arr, y_cal_all_arr, n_bins=n_bins, strategy="uniform")
+    # Platt-calibrated curve (Quantile - The Better Strategy)
+    try:
+        cal_frac, cal_mean = calibration_curve(y_bin_all_arr, y_cal_all_arr, n_bins=n_bins, strategy=strategy)
+    except ValueError:
+        cal_frac, cal_mean = calibration_curve(y_bin_all_arr, y_cal_all_arr, n_bins=n_bins, strategy="uniform")
     cal_brier = brier_score_loss(y_bin_all_arr, y_cal_all_arr)
+    cal_ece = float(np.mean(np.abs(cal_frac - cal_mean))) * 100 if len(cal_mean) > 0 else 0.0
     ax1.plot(
-        cal_mean, cal_frac, "o-", color="#2ca02c", label=f"Platt-Calibrated (Brier: {cal_brier:.5f})", linewidth=2.2, markersize=7
+        cal_mean, cal_frac, "o-", color="#2ca02c",
+        label=f"Platt Quantile [Better] (Brier: {cal_brier:.5f}, ECE: {cal_ece:.2f}%)",
+        linewidth=2.2, markersize=7
     )
 
-    ax1.set_title("Overall Probability Calibration\n(Platt Scaling vs. Raw Softmax)", fontsize=13, fontweight="bold", pad=10)
+    # Platt-calibrated baseline (Uniform) for direct visual contrast
+    try:
+        u_frac, u_mean = calibration_curve(y_bin_all_arr, y_cal_all_arr, n_bins=n_bins, strategy="uniform")
+        ax1.plot(
+            u_mean, u_frac, ":", color="#17becf", alpha=0.75,
+            label="Platt Uniform Baseline (Equal-Width)", linewidth=1.5
+        )
+    except Exception:
+        pass
+
+    ax1.set_title("Overall Probability Calibration\n(Adaptive Quantile Binning vs. Raw Softmax)", fontsize=13, fontweight="bold", pad=10)
     ax1.set_xlabel("Mean Predicted Confidence", fontsize=11)
     ax1.set_ylabel("Fraction of True Positives", fontsize=11)
     ax1.set_xlim([-0.02, 1.02])
     ax1.set_ylim([-0.02, 1.02])
     ax1.grid(True, linestyle=":", alpha=0.6)
-    ax1.legend(loc="upper left", frameon=True, fontsize=10)
+    ax1.legend(loc="upper left", frameon=True, fontsize=9)
 
     # ------------------ PANEL 2: Per-Class Reliability ------------------
     ax2.plot([0, 1], [0, 1], "k--", label="Perfect (y = x)", linewidth=1.5)
@@ -895,14 +939,17 @@ def plot_calibration_curve(
             c_idx = class_labels.index(c_name)
             y_b = (y_true_arr == c_name).astype(int)
             p_c = y_proba[:, c_idx]
-            frac, mean_p = calibration_curve(y_b, p_c, n_bins=n_bins, strategy="uniform")
+            try:
+                frac, mean_p = calibration_curve(y_b, p_c, n_bins=n_bins, strategy=strategy)
+            except ValueError:
+                frac, mean_p = calibration_curve(y_b, p_c, n_bins=n_bins, strategy="uniform")
             brier_c = brier_score_loss(y_b, p_c)
             short_label = c_name.split("/")[0].strip()
             ax2.plot(
                 mean_p, frac, "o-", color=col, label=f"{short_label} (Brier: {brier_c:.5f})", linewidth=1.8, markersize=5
             )
 
-    ax2.set_title("Category-Specific Reliability Curves\n(Representative Classes)", fontsize=13, fontweight="bold", pad=10)
+    ax2.set_title("Category-Specific Reliability Curves\n(Equal-Frequency Quantile Strategy)", fontsize=13, fontweight="bold", pad=10)
     ax2.set_xlabel("Mean Predicted Confidence", fontsize=11)
     ax2.set_ylabel("Fraction of True Positives", fontsize=11)
     ax2.set_xlim([-0.02, 1.02])
@@ -912,6 +959,12 @@ def plot_calibration_curve(
 
     plt.tight_layout()
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
+
+    # Keep reports/figures copy in sync
+    reports_fig = REPO_ROOT / "reports" / "figures" / "11_calibration_curve.png"
+    if reports_fig.parent.exists():
+        fig.savefig(reports_fig, dpi=300, bbox_inches="tight")
+
     plt.close(fig)
 
     print(f"[plot_calibration_curve] Saved publication-grade calibration figure to: {out_path.resolve()}")
@@ -1076,17 +1129,19 @@ def demonstrate_calibration(
     raw_proba = softmax(raw_scores, axis=1)
 
     # 2. Calibration audit
-    print("\n[1/3] Computing Multi-Class Calibration Metrics & Brier Score Loss...")
-    cal_results = investigate_calibration(y_test, cal_proba, class_labels=class_labels, raw_proba=raw_proba)
+    print("\n[1/3] Computing Multi-Class Calibration Metrics, Brier Score Loss & Adaptive ECE...")
+    cal_results = investigate_calibration(y_test, cal_proba, class_labels=class_labels, raw_proba=raw_proba, strategy="quantile")
 
-    print("\n--- Brier Score Loss Benchmark ---")
+    print("\n--- Calibration Benchmark (Adaptive Quantile Strategy) ---")
     print(f"  Raw Softmax LinearSVC Brier Score:       {cal_results.get('mean_raw_brier', 0.0):.6f}")
     print(f"  Platt-Calibrated LinearSVC Brier Score:  {cal_results['mean_calibrated_brier']:.6f}")
+    print(f"  Raw Softmax Adaptive ECE:                {cal_results.get('mean_raw_ece', 0.0):.4f}")
+    print(f"  Platt-Calibrated Adaptive ECE:           {cal_results.get('mean_calibrated_ece', 0.0):.4f}")
     print(f"  Probability Error Reduction:             {cal_results.get('brier_reduction_pct', 0.0):.2f}%")
 
     # 3. Generate Plot
-    print("\n[2/3] Generating Publication-Grade Calibration Curve Plot...")
-    plot_calibration_curve(y_test, cal_proba, class_labels=class_labels, raw_proba=raw_proba, save_path=save_path)
+    print("\n[2/3] Generating Publication-Grade Calibration Curve Plot (Adaptive Quantile)...")
+    plot_calibration_curve(y_test, cal_proba, class_labels=class_labels, raw_proba=raw_proba, save_path=save_path, strategy="quantile")
 
     # 4. Explain gap
     explain_calibration_gap(cal_results)

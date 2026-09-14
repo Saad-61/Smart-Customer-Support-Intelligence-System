@@ -126,7 +126,7 @@ def build_category_pipeline(
         
     Model B ('svm' - Recommended):
         Same composite feature transformer
-        + CalibratedClassifierCV(LinearSVC(class_weight='balanced', C=1.0), cv=3, method='sigmoid')
+        + CalibratedClassifierCV(LinearSVC(class_weight='balanced', C=1.0), cv=5, method='sigmoid')
         Platt scaling yields reliable posterior class probabilities from raw SVM decision margins.
     """
     feature_transformer = build_full_pipeline(max_tfidf_features=max_tfidf_features)
@@ -148,7 +148,7 @@ def build_category_pipeline(
         )
         classifier = CalibratedClassifierCV(
             estimator=base_svc,
-            cv=3,
+            cv=5,
             method="sigmoid",
         )
     else:
